@@ -446,10 +446,22 @@ export async function getSubjectsForGrade(grade) {
     const { db } = await connectToDatabase();
     const curriculumCollection = db.collection("curriculum");
     
-    // Find all subjects for the given grade
+    // Try to find a matching grade (case insensitive, partial match)
+    const allGrades = await curriculumCollection.distinct('grade');
+    const matchingGrade = allGrades.find(g => 
+      g.toLowerCase().includes(grade.toLowerCase()) || 
+      grade.toLowerCase().includes(g.toLowerCase())
+    );
+    
+    console.log('Looking for grade:', grade);
+    console.log('Matching grade found:', matchingGrade);
+    
     const curriculumDocs = await curriculumCollection.find({ 
-      grade: { $regex: new RegExp(`^${grade}$`, 'i') } 
+      grade: matchingGrade || grade
     }).toArray();
+    
+    console.log('Found curriculum docs for', grade, ':', curriculumDocs.length);
+    console.log('Subjects in curriculum:', curriculumDocs.map(doc => doc.subject));
     
     const subjects = [...new Set(curriculumDocs.map(doc => doc.subject.trim()))]
       .filter(subject => subject)

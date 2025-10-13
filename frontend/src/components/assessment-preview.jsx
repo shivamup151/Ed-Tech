@@ -86,21 +86,20 @@ export default function AssessmentPreview({
           if (questionText.toLowerCase().includes('true or false') || 
               questionText.toLowerCase().includes('true/false') ||
               questionText.includes('صح أو خطأ') ||
-              questionText.includes('صح أو خطأ؟')) {
+              questionText.includes('صح أو خطأ؟') ||
+              questionText.includes('صح أم خطأ') ||
+              questionText.includes('صح أم خطأ؟') ||
+              questionText.includes('صحيح أم خاطئ') ||
+              questionText.includes('صحيح أم خاطئ؟')) {
             currentQuestion.type = 'true_false';
+            // Language will be detected when rendering
             currentQuestion.options = [
-              { id: 'true', text: 'صح' },
-              { id: 'false', text: 'خطأ' }
+              { id: 'true', text: 'True' },
+              { id: 'false', text: 'False' }
             ];
-          } else if (questionText.toLowerCase().includes('briefly explain') ||
-                     questionText.toLowerCase().includes('explain') ||
-                     questionText.toLowerCase().includes('describe') ||
-                     questionText.includes('اشرح') ||
-                     questionText.includes('اذكر') ||
-                     questionText.includes('ما هي')) {
-            currentQuestion.type = 'short_answer';
           } else {
-            currentQuestion.type = 'multiple_choice';
+            // Set initial type to unknown, will be determined after parsing
+            currentQuestion.type = 'unknown';
           }
         } else if (currentQuestion && line.match(/^[A-D]\)/)) {
           // This is an option for the current question
@@ -132,6 +131,22 @@ export default function AssessmentPreview({
       if (solutionLine) {
         const correctAnswer = solutionLine.replace(/^\d+\.\s*/, '').trim();
         question.correctAnswer = correctAnswer;
+      }
+    });
+
+    // Determine question types based on parsed options
+    questions.forEach(q => {
+      if (q.type === 'true_false') {
+        // Already set, skip
+        return;
+      }
+      
+      if (q.options.length >= 2) {
+        // Has multiple choice options
+        q.type = 'multiple_choice';
+      } else {
+        // No options, treat as short answer
+        q.type = 'short_answer';
       }
     });
 
@@ -323,34 +338,47 @@ export default function AssessmentPreview({
           </div>
         )}
 
-        {question.type === 'true_false' && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <input
-                type="radio"
-                id={`tf-${index}-true`}
-                name={`tf-${index}`}
-                value="true"
-                checked={studentAnswer === 'true'}
-                onChange={() => !isReviewMode && !isPreviewMode && handleAnswerChange(index, 'true')}
-                disabled={isReviewMode || isPreviewMode}
-              />
-              <label htmlFor={`tf-${index}-true`} className="text-sm">صح</label>
+        {question.type === 'true_false' && (() => {
+          // Detect language from assessment content
+          const isArabic = content && (
+            content.includes('**الحلول**') || 
+            content.includes('صح أم خطأ') ||
+            content.includes('صحيح أم خاطئ') ||
+            /[\u0600-\u06FF]/.test(content)
+          );
+          
+          const trueLabel = isArabic ? 'صح' : 'True';
+          const falseLabel = isArabic ? 'خطأ' : 'False';
+          
+          return (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  id={`tf-${index}-true`}
+                  name={`tf-${index}`}
+                  value="true"
+                  checked={studentAnswer === 'true'}
+                  onChange={() => !isReviewMode && !isPreviewMode && handleAnswerChange(index, 'true')}
+                  disabled={isReviewMode || isPreviewMode}
+                />
+                <label htmlFor={`tf-${index}-true`} className="text-sm">{trueLabel}</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  id={`tf-${index}-false`}
+                  name={`tf-${index}`}
+                  value="false"
+                  checked={studentAnswer === 'false'}
+                  onChange={() => !isReviewMode && !isPreviewMode && handleAnswerChange(index, 'false')}
+                  disabled={isReviewMode || isPreviewMode}
+                />
+                <label htmlFor={`tf-${index}-false`} className="text-sm">{falseLabel}</label>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="radio"
-                id={`tf-${index}-false`}
-                name={`tf-${index}`}
-                value="false"
-                checked={studentAnswer === 'false'}
-                onChange={() => !isReviewMode && !isPreviewMode && handleAnswerChange(index, 'false')}
-                disabled={isReviewMode || isPreviewMode}
-              />
-              <label htmlFor={`tf-${index}-false`} className="text-sm">خطأ</label>
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {question.type === 'short_answer' && (
           <div className="space-y-2">

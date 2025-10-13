@@ -397,21 +397,19 @@ export default function LibraryPage() {
       throw new Error('No comic images available for download');
     }
 
+    // Support multiple formats for comics
     switch (format) {
-      case 'pdf':
-        await downloadComicAsPDF(comicImages, comic, filename);
-        break;
       case 'doc':
         await downloadComicAsDOCX(comicImages, comic, filename);
-        break;
-      case 'pptx':
-        await downloadComicAsPPTX(comicImages, comic, filename);
         break;
       case 'image':
         await downloadComicAsImages(comicImages, filename);
         break;
+      case 'pdf':
+        await downloadComicAsPDF(comicImages, comic, filename);
+        break;
       default:
-        throw new Error(`Unsupported format: ${format}`);
+        throw new Error(`Format ${format} is not supported for comics. Supported formats: DOCX, PDF, Images`);
     }
   };
 
@@ -600,80 +598,132 @@ export default function LibraryPage() {
   };
 
   const downloadComicAsDOCX = async (images, comic, filename) => {
-    const { Document, Packer, Paragraph, TextRun } = await import('docx');
-    
-    const docElements = [
-      new Paragraph({
-        children: [new TextRun({ text: comic.title || 'Comic', bold: true, size: 32 })]
-      }),
-      new Paragraph({ text: "" }),
-      new Paragraph({
-        children: [new TextRun({ text: `Topic: ${comic.topic || 'N/A'}` })]
-      }),
-      new Paragraph({ text: "" })
-    ];
-
-    // Note: Adding images to DOCX is complex and requires base64 conversion
-    // For now, we'll add image URLs as text
-    images.forEach((imageUrl, index) => {
-      docElements.push(
+    try {
+      const { Document, Packer, Paragraph, TextRun, ImageRun } = await import('docx');
+      
+      const docElements = [
         new Paragraph({
-          children: [new TextRun({ text: `Panel ${index + 1}: ${imageUrl}` })]
-        })
-      );
-    });
+          children: [new TextRun({ text: comic.title || 'Comic', bold: true, size: 32 })]
+        }),
+        new Paragraph({ text: "" }),
+        new Paragraph({
+          children: [new TextRun({ text: `Topic: ${comic.topic || 'N/A'}` })]
+        }),
+        new Paragraph({ text: "" })
+      ];
 
-    const doc = new Document({
-      sections: [{
-        properties: {},
-        children: docElements
-      }]
-    });
+      // Extract panel texts
+      let panelTexts = [];
+      if (comic.panelTexts && Array.isArray(comic.panelTexts)) {
+        panelTexts = comic.panelTexts.map((panelText, index) => {
+          if (typeof panelText === 'string') {
+            return panelText;
+          } else if (panelText && panelText.text) {
+            return panelText.text;
+          } else if (panelText && panelText.content) {
+            return panelText.content;
+          } else if (panelText && panelText.description) {
+            return panelText.description;
+          }
+          return `Panel ${index + 1} text not available`;
+        });
+      } else if (comic.panels && Array.isArray(comic.panels)) {
+        panelTexts = comic.panels.map((panel, index) => {
+          return panel.text || panel.content || panel.description || `Panel ${index + 1} text not available`;
+        });
+      }
 
-    const blob = await Packer.toBlob(doc);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${filename}.docx`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      // Process each image and embed it in the document
+      for (let i = 0; i < images.length; i++) {
+        const imageUrl = images[i];
+        
+        try {
+          // Fetch the image and convert to Uint8Array
+          const response = await fetch(imageUrl);
+          const blob = await response.blob();
+          const arrayBuffer = await blob.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+
+          // Add panel title
+          docElements.push(
+            new Paragraph({
+              children: [new TextRun({ text: `Panel ${i + 1}`, bold: true, size: 24 })]
+            })
+          );
+
+          // Create image run for DOCX
+          const imageRun = new ImageRun({
+            data: uint8Array,
+            transformation: {
+              width: 400,
+              height: 300,
+            },
+          });
+
+          // Add the image
+          docElements.push(
+            new Paragraph({
+              children: [imageRun],
+              alignment: 'center'
+            })
+          );
+
+          // Add panel text if available
+          if (panelTexts[i]) {
+            docElements.push(
+              new Paragraph({
+                children: [new TextRun({ text: panelTexts[i] })]
+              })
+            );
+          }
+
+          // Add spacing between panels
+          docElements.push(new Paragraph({ text: "" }));
+          
+        } catch (error) {
+          console.error(`Error processing image ${i + 1}:`, error);
+          // Fallback to URL if image processing fails
+          docElements.push(
+            new Paragraph({
+              children: [new TextRun({ text: `Panel ${i + 1}: ${imageUrl}` })]
+            })
+          );
+          docElements.push(
+            new Paragraph({
+              children: [new TextRun({ text: `Note: Image embedding failed. For best results, use the "Images" download format to get individual image files.`, italics: true })]
+            })
+          );
+        }
+      }
+
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: docElements
+        }]
+      });
+
+      const blob = await Packer.toBlob(doc);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filename}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Error creating DOCX:', error);
+      throw new Error('Failed to create DOCX document');
+    }
   };
 
   const downloadComicAsPPTX = async (images, comic, filename) => {
-    const { Document, Packer, Paragraph, TextRun, Slide, SlideLayout, SlideMaster } = await import('docx');
-    
-    // Create a simple presentation with comic panels
-    const slides = images.map((imageUrl, index) => {
-      return new Slide({
-        children: [
-          new Paragraph({
-            children: [new TextRun({ text: `Panel ${index + 1}`, bold: true, size: 24 })]
-          }),
-          new Paragraph({
-            children: [new TextRun({ text: `Image URL: ${imageUrl}` })]
-          })
-        ]
-      });
-    });
-
-    const doc = new Document({
-      sections: [{
-        properties: {},
-        children: slides
-      }]
-    });
-
-    const blob = await Packer.toBlob(doc);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${filename}.pptx`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // Note: PPTX generation with embedded images is complex and requires additional libraries
+    // For now, we'll create a DOCX file with embedded images as a workaround
+    // This provides better image embedding than the original PPTX implementation
+    await downloadComicAsDOCX(images, comic, filename);
   };
 
   const downloadComicAsImages = async (images, filename) => {
@@ -960,13 +1010,12 @@ export default function LibraryPage() {
     switch (contentType) {
       case 'comic':
         return [
-          { value: 'pdf', label: 'PDF (.pdf)', description: 'All panels in a single PDF with text' }
+          { value: 'image', label: 'Images (.jpg)', description: 'Download all comic panels as individual image files' },
+          { value: 'pdf', label: 'PDF (.pdf)', description: 'Comic panels in PDF format with embedded images' },
+          { value: 'doc', label: 'Word Document (.docx)', description: 'Comic panels in Word format with embedded images' }
         ];
       case 'image':
         return [
-          { value: 'pdf', label: 'PDF (.pdf)', description: 'Image in PDF format' },
-          { value: 'doc', label: 'Word Document (.docx)', description: 'Document with image information' },
-          { value: 'pptx', label: 'PowerPoint (.pptx)', description: 'Presentation with image' },
           { value: 'image', label: 'Image (.jpg)', description: 'Original image file' }
         ];
       case 'slides':
@@ -1252,16 +1301,16 @@ export default function LibraryPage() {
                       <SelectValue placeholder="Select grade level" />
                     </SelectTrigger>
                     <SelectContent>
-                      {curriculumData.gradeSubjectPairs.map((pair) => (
-                        <SelectItem key={pair.id} value={pair.displayName}>
-                          {pair.displayName}
+                      {curriculumData.grades.map((grade) => (
+                        <SelectItem key={grade.id} value={grade.name}>
+                          {grade.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Select the specific grade and subject combination for this lesson
+                  Select the grade level for this lesson
                 </p>
               </div>
             )}

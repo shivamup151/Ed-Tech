@@ -30,6 +30,17 @@ export default function SignUpForm() {
     resolver: zodResolver(signUpSchema),
   });
 
+  const getRedirectUrl = (userRole) => {
+    switch (userRole) {
+      case "admin":
+        return "/admin/dashboard";
+      case "teacher":
+        return "/teacher/dashboard";
+      default:
+        return "/student/dashboard";
+    }
+  };
+
   async function onSubmit({ name, email, password }) {
     setError(null);
 
@@ -46,7 +57,9 @@ export default function SignUpForm() {
         toast.error(error.message || "Sign up failed");
       } else {
         toast.success("Account created successfully");
-        router.push("/student/dashboard");
+        // Default to student role for new signups
+        const redirectUrl = getRedirectUrl("student");
+        router.push(redirectUrl);
       }
     } catch (err) {
       setError("An unexpected error occurred");

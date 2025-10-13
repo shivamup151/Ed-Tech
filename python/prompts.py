@@ -601,7 +601,7 @@ Please adhere to the following specifications:
 1. **Question Generation Rules:**
    - Generate questions numbered as: 1., 2., 3., etc.
    - For MCQ questions: Provide exactly 4 options labeled A), B), C), D)
-   - For True/False questions: Provide clear statements without options (options will be auto-generated)
+   - For True/False questions: Provide clear statements ending with "True or False?" - DO NOT include any options like "True" or "False" or "صح" or "خطأ" in the question text
    - For Short Answer questions: Provide clear, direct questions
    - Each question must be on its own line
    - Options must be on separate lines immediately after each question

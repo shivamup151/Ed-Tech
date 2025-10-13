@@ -143,31 +143,41 @@ const ComicPreview = ({ comic, onSave, onDelete, onEdit, isNew = false }) => {
         }
     };
 
-    const handleDownload = () => {
-        // Create a downloadable version of the comic
-        const comicData = {
-            title: comic.title,
-            topic: comic.topic,
-            subject: comic.subject,
-            grade: comic.grade,
-            language: comic.language,
-            storyPrompts: comic.storyPrompts,
-            panels: comic.panels
-        };
+    const handleDownload = async () => {
+        try {
+            // Download all comic images as individual files
+            const imageUrls = comic.panels?.map(panel => panel.imageUrl || panel.imageBase64) || 
+                             comic.imageUrls || 
+                             comic.images || [];
 
-        const dataStr = JSON.stringify(comicData, null, 2);
-        const dataBlob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(dataBlob);
-        
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${comic.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_comic.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        
-        toast.success('Comic downloaded successfully!');
+            if (imageUrls.length === 0) {
+                toast.error('No images available for download');
+                return;
+            }
+
+            // Download each image
+            for (let i = 0; i < imageUrls.length; i++) {
+                try {
+                    const response = await fetch(imageUrls[i]);
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${comic.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_panel_${i + 1}.jpg`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } catch (error) {
+                    console.error(`Error downloading image ${i + 1}:`, error);
+                }
+            }
+            
+            toast.success('Comic images downloaded successfully!');
+        } catch (error) {
+            console.error('Error downloading comic:', error);
+            toast.error('Failed to download comic images');
+        }
     };
 
     const nextPanel = () => {

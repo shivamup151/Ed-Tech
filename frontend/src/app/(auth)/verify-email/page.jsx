@@ -11,7 +11,18 @@ export default async function VerifyEmailPage() {
     const session = await getServerSession();
     const user = session?.user;
     if(!user) unauthorized();
-    if(user.emailVerified) redirect("/student/dashboard");
+    
+    if(user.emailVerified) {
+      // Redirect to appropriate dashboard based on user role
+      switch (user.role) {
+        case "admin":
+          redirect("/admin/dashboard");
+        case "teacher":
+          redirect("/teacher/dashboard");
+        default:
+          redirect("/student/dashboard");
+      }
+    }
  
 
 

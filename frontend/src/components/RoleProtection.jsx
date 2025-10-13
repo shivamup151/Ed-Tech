@@ -1,6 +1,5 @@
 import { getServerSession } from "@/lib/get-session";
 import { redirect } from "next/navigation";
-import { unauthorized } from "@/app/(home)/student/dashboard/unauthorized";
 
 export default function RoleProtection({ 
   children, 

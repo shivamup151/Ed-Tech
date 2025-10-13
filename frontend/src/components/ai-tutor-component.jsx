@@ -58,6 +58,7 @@ import {
     getStudentLearningStats,
     getCurrentUserData
 } from '../app/(home)/student/ai-tutor/action';
+import { getSubjectsAndGrades } from '../app/(home)/admin/user-management/action';
 import { saveStudentConversation } from '../app/(home)/student/history/action';
 import { RealtimeOpenAIService } from '@/lib/realtimeOpenAI';
 
@@ -198,8 +199,8 @@ const AiTutor = () => {
                         _id: userResult.data._id,
                         email: userResult.data.email,
                         name: userResult.data.name || userResult.data.email,
-                        grade: userResult.data.grade || '8',
-                        subjects: userResult.data.subjects || ['Mathematics', 'Science', 'English']
+                        grade: userResult.data.grade || '8'
+                        // Remove subjects - will be fetched from curriculum
                     });
                 } else {
                     // Fallback user data
@@ -207,8 +208,8 @@ const AiTutor = () => {
                         _id: 'fallback_user_id',
                         email: 'student@example.com',
                         name: 'Student',
-                        grade: '8',
-                        subjects: ['Mathematics', 'Science', 'English']
+                        grade: '8'
+                        // Remove subjects - will be fetched from curriculum
                     });
                 }
 
@@ -238,8 +239,8 @@ const AiTutor = () => {
                     _id: 'fallback_user_id',
                     email: 'student@example.com',
                     name: 'Student',
-                    grade: '8',
-                    subjects: ['Mathematics', 'Science', 'English']
+                    grade: '8'
+                    // Remove subjects - will be fetched from curriculum
                 });
             } finally {
                 setDataLoading(false);
@@ -270,34 +271,29 @@ const AiTutor = () => {
         }
     }, [user?._id]);
 
-    // NEW: Get subjects based on grade
-    const getSubjectsForGrade = async (grade) => {
-        try {
-            const response = await fetch(`/api/student/learning-library/subjects?grade=${grade}`);
-            const data = await response.json();
-            if (data.success) {
-                return data.subjects;
-            }
-            return [];
-        } catch (error) {
-            console.error('Error fetching subjects:', error);
-            return [];
-        }
-    };
+    // Server action getSubjectsForGrade is now imported from user-management
 
     // NEW: Set default subject when user data is loaded
     useEffect(() => {
-        if (user?.grade && !selectedSubject) {
+        if (user?.grade) {
             const fetchSubjects = async () => {
-                const subjects = await getSubjectsForGrade(user.grade);
-                setAvailableSubjects(subjects);
-                if (subjects.length > 0) {
-                    setSelectedSubject(subjects[0]);
+                const result = await getSubjectsAndGrades();
+                if (result.success && result.gradeSubjectPairs) {
+                    // Filter subjects for the user's grade
+                    const subjectsForGrade = result.gradeSubjectPairs
+                        .filter(pair => pair.grade === user.grade)
+                        .map(pair => pair.subject);
+                    
+                    console.log('Subjects for grade', user.grade, ':', subjectsForGrade);
+                    setAvailableSubjects(subjectsForGrade);
+                    if (subjectsForGrade.length > 0 && !selectedSubject) {
+                        setSelectedSubject(subjectsForGrade[0]);
+                    }
                 }
             };
             fetchSubjects();
         }
-    }, [user?.grade, selectedSubject]);
+    }, [user?.grade || '']); // Only re-fetch when grade changes, ensure consistent array size
 
     // Initialize session when user data is loaded
     useEffect(() => {
@@ -985,7 +981,7 @@ Exported on: ${new Date().toLocaleDateString()}\\par\\par`;
                 email: user.email,
                 grade: user.grade || '8',
                 subject: selectedSubject || 'English', // NEW: Add selected subject
-                subjects: user.subjects || ['Mathematics', 'Science', 'English'],
+                subjects: user.subjects || [], // Will be populated from curriculum based on grade
                 role: 'student',
                 
                 // Learning progress data

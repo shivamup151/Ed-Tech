@@ -44,9 +44,9 @@ export default function SignInForm() {
       case "admin":
         return "/admin/dashboard";
       case "teacher":
-        return "/teacher/dashboard"
+        return "/teacher/dashboard";
       default:
-        return "/student/dashboard"; 
+        return "/student/dashboard";
     }
   };
 

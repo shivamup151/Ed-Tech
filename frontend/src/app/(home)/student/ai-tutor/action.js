@@ -211,7 +211,7 @@ export async function getCurrentUserData() {
           name: session.user.name || 'Student',
           grade: '8',
           grades: ['8'],
-          subjects: ['Mathematics', 'Science', 'English']
+          subjects: [] // Will be populated from curriculum based on grade
         }
       };
     }
@@ -223,7 +223,7 @@ export async function getCurrentUserData() {
       name: user.name,
       grade: user.grade || user.grades?.[0] || '8',
       grades: user.grades || [user.grade || '8'],
-      subjects: user.subjects || ['Mathematics', 'Science', 'English'],
+      subjects: user.subjects || [], // Will be populated from curriculum based on grade
       role: user.role,
       createdAt: user.createdAt?.toISOString(),
       updatedAt: user.updatedAt?.toISOString()
@@ -243,7 +243,7 @@ export async function getCurrentUserData() {
         name: 'Student',
         grade: '8',
         grades: ['8'],
-        subjects: ['Mathematics', 'Science', 'English']
+        subjects: [] // Will be populated from curriculum based on grade
       }
     };
   }
@@ -481,7 +481,7 @@ export async function startVoiceSession(studentData) {
       achievements: studentData.achievements || [],
       
       // Academic Resources
-      subjects: studentData.subjects || ["General Studies", "Mathematics", "Science"],
+      subjects: studentData.subjects || [], // Will be populated from curriculum based on grade
       lessons: studentData.lessons || [],
       resources: studentData.resources || [],
       assessments: (studentData.resources || []).filter(r => r.resourceType === 'assessment'),
@@ -693,7 +693,7 @@ export async function getStudentLearningInsights(formData) {
     // Prepare learning insights based on student data
     const insights = {
       gradeLevel: studentData.grade || "8",
-      subjects: studentData.subjects || ["General Studies"],
+      subjects: studentData.subjects || [], // Will be populated from curriculum based on grade
       learningStyle: studentData.learningStyle || "visual",
       difficultyLevel: studentData.difficultyPreference || "medium",
       progress: studentData.progress || {},

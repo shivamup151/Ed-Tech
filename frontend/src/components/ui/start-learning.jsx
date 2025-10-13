@@ -139,44 +139,13 @@ const InteractiveAssessment = ({ assessment, onAnswerChange, studentAnswers, onS
           
           console.log(`Started new question ${questionNumber}: "${cleanQuestionText}"`);
 
-          // Check if this is a True/False question
+          // Check for True/False immediately (no options to collect)
           if (cleanQuestionText.toLowerCase().includes('true or false') || 
               cleanQuestionText.toLowerCase().includes('true/false') ||
               cleanQuestionText.includes('صح أم خطأ') ||
               cleanQuestionText.includes('صحيح أم خاطئ')) {
             currentQuestion.type = 'true_false';
             currentQuestion.options = ['True', 'False'];
-          } else if (cleanQuestionText.toLowerCase().includes('briefly explain') ||
-                     cleanQuestionText.toLowerCase().includes('explain') ||
-                     cleanQuestionText.toLowerCase().includes('describe') ||
-                     cleanQuestionText.toLowerCase().includes('what is meant by') ||
-                     cleanQuestionText.toLowerCase().includes('how') ||
-                     cleanQuestionText.toLowerCase().includes('solve for') ||
-                     cleanQuestionText.toLowerCase().includes('simplify') ||
-                     cleanQuestionText.toLowerCase().includes('what is the value') ||
-                     cleanQuestionText.toLowerCase().includes('calculate') ||
-                     cleanQuestionText.toLowerCase().includes('find') ||
-                     cleanQuestionText.toLowerCase().includes('determine') ||
-                     cleanQuestionText.toLowerCase().includes('show that') ||
-                     cleanQuestionText.toLowerCase().includes('prove that') ||
-                     cleanQuestionText.includes('اشرح') ||
-                     cleanQuestionText.includes('وضح') ||
-                     cleanQuestionText.includes('ما المقصود') ||
-                     cleanQuestionText.includes('ما هو الفرق') ||
-                     cleanQuestionText.includes('كيف يمكن') ||
-                     cleanQuestionText.includes('ما هو') ||
-                     cleanQuestionText.includes('ما هي') ||
-                     cleanQuestionText.includes('ما الذي') ||
-                     cleanQuestionText.includes('ما الذي') ||
-                     cleanQuestionText.includes('لماذا') ||
-                     cleanQuestionText.includes('متى') ||
-                     cleanQuestionText.includes('أين') ||
-                     cleanQuestionText.includes('من') ||
-                     cleanQuestionText.includes('أي') ||
-                     cleanQuestionText.includes('كيف')) {
-            currentQuestion.type = 'short_answer';
-          } else {
-            currentQuestion.type = 'mcq';
           }
         } else if (currentQuestion) {
           // FIXED: Handle multiple option formats - Enhanced patterns with better debugging
@@ -253,6 +222,22 @@ const InteractiveAssessment = ({ assessment, onAnswerChange, studentAnswers, onS
       questions.push(currentQuestion);
       console.log(`Saved final question ${currentQuestion.number} with ${currentQuestion.options.length} options`);
     }
+
+    // Determine question types based on parsed options
+    questions.forEach(q => {
+      if (q.type === 'true_false') {
+        // Already set, skip
+        return;
+      }
+      
+      if (q.options.length >= 2) {
+        // Has multiple choice options
+        q.type = 'mcq';
+      } else {
+        // No options, treat as short answer
+        q.type = 'short_answer';
+      }
+    });
 
     // Debug: Log all parsed questions
     console.log('=== FINAL PARSED QUESTIONS ===');
@@ -415,26 +400,39 @@ const InteractiveAssessment = ({ assessment, onAnswerChange, studentAnswers, onS
               </div>
             )}
 
-            {question.type === 'true_false' && (
-              <RadioGroup
-                value={studentAnswer}
-                onValueChange={(value) => handleAnswerChange(question.number, value)}
-                className="space-y-2"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="True" id={`q${question.number}-true`} />
-                  <Label htmlFor={`q${question.number}-true`} className="text-sm cursor-pointer text-foreground">
-                    True
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="False" id={`q${question.number}-false`} />
-                  <Label htmlFor={`q${question.number}-false`} className="text-sm cursor-pointer text-foreground">
-                    False
-                  </Label>
-                </div>
-              </RadioGroup>
-            )}
+            {question.type === 'true_false' && (() => {
+              // Detect language from assessment content
+              const isArabic = assessmentContent && (
+                assessmentContent.includes('**الحلول**') || 
+                assessmentContent.includes('صح أم خطأ') ||
+                assessmentContent.includes('صحيح أم خاطئ') ||
+                /[\u0600-\u06FF]/.test(assessmentContent)
+              );
+              
+              const trueLabel = isArabic ? 'صح' : 'True';
+              const falseLabel = isArabic ? 'خطأ' : 'False';
+              
+              return (
+                <RadioGroup
+                  value={studentAnswer}
+                  onValueChange={(value) => handleAnswerChange(question.number, value)}
+                  className="space-y-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="True" id={`q${question.number}-true`} />
+                    <Label htmlFor={`q${question.number}-true`} className="text-sm cursor-pointer text-foreground">
+                      {trueLabel}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="False" id={`q${question.number}-false`} />
+                    <Label htmlFor={`q${question.number}-false`} className="text-sm cursor-pointer text-foreground">
+                      {falseLabel}
+                    </Label>
+                  </div>
+                </RadioGroup>
+              );
+            })()}
 
             {question.type === 'short_answer' && (
               <Textarea
@@ -585,23 +583,14 @@ const AssessmentReview = ({ assessment, studentAnswers, score, correctAnswers, t
             options: []
           };
 
-          // Check if this is a True/False question
           if (questionText.toLowerCase().includes('true or false') || 
               questionText.toLowerCase().includes('true/false')) {
             currentQuestion.type = 'true_false';
             currentQuestion.options = ['True', 'False'];
-          } else if (questionText.toLowerCase().includes('briefly explain') ||
-                     questionText.toLowerCase().includes('explain') ||
-                     questionText.toLowerCase().includes('describe')) {
-            currentQuestion.type = 'short_answer';
-          } else {
-            currentQuestion.type = 'mcq';
           }
         } else if (currentQuestion && line.match(/^[A-D]\)/)) {
-          // This is an option for the current MCQ question
           currentQuestion.options.push(line);
-        } else if (currentQuestion && currentQuestion.type === 'short_answer' && line && !line.match(/^\d+\./)) {
-          // This might be additional text for the short answer question
+        } else if (currentQuestion && currentQuestion.type === 'unknown' && line && !line.match(/^\d+\./)) {
           currentQuestion.text += ' ' + line;
         }
       }
@@ -611,6 +600,22 @@ const AssessmentReview = ({ assessment, studentAnswers, score, correctAnswers, t
     if (currentQuestion) {
       questions.push(currentQuestion);
     }
+
+    // Determine question types based on parsed options
+    questions.forEach(q => {
+      if (q.type === 'true_false') {
+        // Already set, skip
+        return;
+      }
+      
+      if (q.options.length >= 2) {
+        // Has multiple choice options
+        q.type = 'mcq';
+      } else {
+        // No options, treat as short answer
+        q.type = 'short_answer';
+      }
+    });
 
     return { questions, solutions };
   };
