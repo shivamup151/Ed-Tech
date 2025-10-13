@@ -226,12 +226,21 @@ class PPTXToHeyGenVideo:
             "X-Api-Key": self.heygen_api_key,
             "Content-Type": mime_type,
         }
+        
+        # Add folder_id as query parameter if provided
+        if folder_id:
+            url = f"{url}?folder_id={folder_id}"
 
         with open(file_path, 'rb') as f:
             for attempt in range(3):
                 try:
                     f.seek(0)
                     resp = requests.post(url, headers=upload_headers, data=f, timeout=self.request_timeout_s)
+                    
+                    # Log the response for debugging
+                    if resp.status_code != 200:
+                        logging.error(f"HeyGen upload failed with status {resp.status_code}: {resp.text}")
+                    
                     resp.raise_for_status()
                     
                     response_data = resp.json()
