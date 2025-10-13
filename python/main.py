@@ -1020,15 +1020,15 @@ async def video_presentation_endpoint(
     voice_id: str = Form(...),
     talking_photo_id: str = Form(...),
     title: str = Form(...),
-    language: str = Form("english")  # NEW: Add language parameter
+    language: str = Form("english") 
 ):
     """
     Starts video generation and returns immediately with task ID.
     Use check_video_status endpoint to poll for completion.
     """
     try:
-        logger.info(f"Video presentation request received: {title}")
-        logger.info(f"Voice ID: {voice_id}, Talking Photo ID: {talking_photo_id}, Language: {language}")
+        logger.info(f"Video presentation request received: {title} in {language}")
+        logger.info(f"Voice ID: {voice_id}, Talking Photo ID: {talking_photo_id}")
         
         # Generate unique task ID
         task_id = str(uuid.uuid4())
@@ -1048,7 +1048,6 @@ async def video_presentation_endpoint(
             "title": title,
             "voice_id": voice_id,
             "talking_photo_id": talking_photo_id,
-            "language": language,  # NEW: Store language
             "temp_file_path": temp_file_path,
             "created_at": datetime.now().isoformat(),
             "error": None
@@ -1070,7 +1069,7 @@ async def video_presentation_endpoint(
         logger.error(f"Error in video presentation endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Video generation failed: {str(e)}")
 
-async def generate_video_background(task_id: str, temp_file_path: str, voice_id: str, talking_photo_id: str, title: str, language: str = "english"):
+async def generate_video_background(task_id: str, temp_file_path: str, voice_id: str, talking_photo_id: str, title: str, language: str):
     """Background task to generate video"""
     try:
         logger.info(f"Starting background video generation for task: {task_id}")
@@ -1078,18 +1077,18 @@ async def generate_video_background(task_id: str, temp_file_path: str, voice_id:
         # Update task status
         video_generation_tasks[task_id]["status"] = "generating"
         
-        # Initialize the HeyGen video converter with language support
+        # Initialize the HeyGen video converter
         converter = PPTXToHeyGenVideo(
             pptx_avatar_id=talking_photo_id,
-            pptx_voice_id=voice_id,
-            language=language  # NEW: Pass language to converter
+            pptx_voice_id=voice_id
         )
         
         # Convert the presentation to video (this is the long-running operation)
         result = await run_in_threadpool(
             converter.convert,
             pptx_path=temp_file_path,
-            title=title
+            title=title,
+            language=language
         )
         
         # Update task with results
