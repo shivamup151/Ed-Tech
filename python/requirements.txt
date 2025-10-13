@@ -40,4 +40,3 @@ boto3
 python-pptx
 arabic_reshaper 
 python-bidi
-spire.presentation.free
