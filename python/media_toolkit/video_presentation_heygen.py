@@ -316,13 +316,15 @@ class PPTXToHeyGenVideo:
             # Generate unique filename for upload
             filename = f"presentation_{uuid.uuid4().hex}.pptx"
             
-            # Upload the presentation
-            with open(pptx_path, 'rb') as presentation_file:
-                upload_result = slides_api.upload_file(presentation_file, filename)
-                logging.info(f"Uploaded presentation: {filename}")
+            # Upload the presentation - read file data first
+            with open(pptx_path, 'rb') as f:
+                file_data = f.read()
+            
+            upload_result = slides_api.upload_file(filename, file_data)
+            logging.info(f"Uploaded presentation: {filename}")
             
             # Get presentation info to know slide count
-            presentation_info = slides_api.get_presentation_slides(filename)
+            presentation_info = slides_api.get_slides(filename)
             slide_count = len(presentation_info.slide_list)
             logging.info(f"Found {slide_count} slides in presentation")
             
@@ -332,7 +334,7 @@ class PPTXToHeyGenVideo:
             for slide_index in range(1, slide_count + 1):
                 try:
                     # Download slide as PNG image
-                    image_data = slides_api.download_slide(filename, slide_index, "PNG")
+                    image_data = slides_api.download_slide(filename, slide_index, "png")
                     
                     # Save image to temp directory
                     slide_path = os.path.join(temp_dir, f"slide_{slide_index}.png")
