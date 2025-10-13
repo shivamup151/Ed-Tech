@@ -353,8 +353,27 @@ class PPTXToHeyGenVideo:
                         # If it's already bytes, use as is
                         image_bytes = image_data
                     
-                    with open(slide_path, 'wb') as f:
-                        f.write(image_bytes)
+                    # Validate and process the image
+                    try:
+                        from PIL import Image
+                        import io
+                        
+                        # Try to open the image to validate it
+                        img = Image.open(io.BytesIO(image_bytes))
+                        
+                        # Convert to RGB if necessary (HeyGen prefers RGB PNG)
+                        if img.mode != 'RGB':
+                            img = img.convert('RGB')
+                        
+                        # Save as high-quality PNG
+                        img.save(slide_path, 'PNG', optimize=True, quality=95)
+                        logging.info(f"Processed and validated slide {slide_index} image")
+                        
+                    except Exception as img_error:
+                        logging.warning(f"Image processing failed for slide {slide_index}: {img_error}")
+                        # Fallback: save raw bytes
+                        with open(slide_path, 'wb') as f:
+                            f.write(image_bytes)
                     
                     slide_files.append(slide_path)
                     logging.info(f"Converted slide {slide_index} to {slide_path}")
