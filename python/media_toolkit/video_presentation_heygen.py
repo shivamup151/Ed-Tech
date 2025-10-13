@@ -338,8 +338,23 @@ class PPTXToHeyGenVideo:
                     
                     # Save image to temp directory
                     slide_path = os.path.join(temp_dir, f"slide_{slide_index}.png")
+                    
+                    # Handle different response formats
+                    if isinstance(image_data, str):
+                        # If it's a string, it's likely base64 encoded image data
+                        import base64
+                        try:
+                            # Try to decode as base64
+                            image_bytes = base64.b64decode(image_data)
+                        except:
+                            # If not base64, treat as raw string
+                            image_bytes = image_data.encode('utf-8')
+                    else:
+                        # If it's already bytes, use as is
+                        image_bytes = image_data
+                    
                     with open(slide_path, 'wb') as f:
-                        f.write(image_data)
+                        f.write(image_bytes)
                     
                     slide_files.append(slide_path)
                     logging.info(f"Converted slide {slide_index} to {slide_path}")
