@@ -280,9 +280,9 @@ class PPTXToHeyGenVideo:
                 logging.info("PowerPoint COM automation completed successfully")
                 
             else:
-                # For non-Windows systems, use LibreOffice
-                logging.info("Windows not detected, using LibreOffice for conversion...")
-                slide_image_paths = self._convert_with_libreoffice(pptx_path, temp_dir)
+                # For non-Windows systems, use Aspose Cloud API
+                logging.info("Windows not detected, using Aspose Cloud API for conversion...")
+                slide_image_paths = self._convert_with_aspose_cloud(pptx_path, temp_dir)
                 
         except Exception as e:
             logging.error(f"Slide export failed: {e}")
@@ -294,46 +294,76 @@ class PPTXToHeyGenVideo:
         self.slide_asset_ids = [self._upload_asset_to_heygen(p, folder_id) for p in slide_image_paths]
 
 
-    def _convert_with_libreoffice(self, pptx_path: str, temp_dir: str) -> List[str]:
-        """Convert PowerPoint to images using LibreOffice (fallback method)"""
+    def _convert_with_aspose_cloud(self, pptx_path: str, temp_dir: str) -> List[str]:
+        """Convert PowerPoint to images using Aspose Cloud API (no watermarks)"""
         try:
-            import subprocess
-            import os
+            import asposeslidescloud
+            from asposeslidescloud.configuration import Configuration
+            from asposeslidescloud.apis.slides_api import SlidesApi
+            import uuid
             
-            # Convert PPTX to PDF first
-            pdf_path = os.path.join(temp_dir, "presentation.pdf")
-            cmd = [
-                "libreoffice", "--headless", "--convert-to", "pdf", 
-                "--outdir", temp_dir, pptx_path
-            ]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            # Configure API credentials
+            configuration = Configuration()
+            configuration.app_sid = os.getenv("ASPOSE_CLIENT_ID")
+            configuration.app_key = os.getenv("ASPOSE_CLIENT_SECRET")
+            slides_api = SlidesApi(configuration)
             
-            if result.returncode != 0:
-                raise Exception(f"LibreOffice conversion failed: {result.stderr}")
+            if not configuration.app_sid or not configuration.app_key:
+                raise Exception("ASPOSE_CLIENT_ID and ASPOSE_CLIENT_SECRET environment variables are required")
             
-            # Convert PDF to images using ImageMagick
-            cmd = [
-                "convert", "-density", "300", "-quality", "100",
-                pdf_path, os.path.join(temp_dir, "slide_%d.png")
-            ]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            logging.info("Using Aspose Cloud API for slide conversion...")
             
-            if result.returncode != 0:
-                raise Exception(f"ImageMagick conversion failed: {result.stderr}")
+            # Generate unique filename for upload
+            filename = f"presentation_{uuid.uuid4().hex}.pptx"
             
-            # Find generated PNG files
+            # Upload the presentation
+            with open(pptx_path, 'rb') as presentation_file:
+                upload_result = slides_api.upload_file(presentation_file, filename)
+                logging.info(f"Uploaded presentation: {filename}")
+            
+            # Get presentation info to know slide count
+            presentation_info = slides_api.get_presentation_slides(filename)
+            slide_count = len(presentation_info.slide_list)
+            logging.info(f"Found {slide_count} slides in presentation")
+            
             slide_files = []
-            for i in range(1, 100):  # Assume max 100 slides
-                slide_path = os.path.join(temp_dir, f"slide_{i}.png")
-                if os.path.exists(slide_path):
-                    slide_files.append(slide_path)
-                else:
-                    break
             
+            # Download each slide as PNG
+            for slide_index in range(1, slide_count + 1):
+                try:
+                    # Download slide as PNG image
+                    image_data = slides_api.download_slide(filename, slide_index, "PNG")
+                    
+                    # Save image to temp directory
+                    slide_path = os.path.join(temp_dir, f"slide_{slide_index}.png")
+                    with open(slide_path, 'wb') as f:
+                        f.write(image_data)
+                    
+                    slide_files.append(slide_path)
+                    logging.info(f"Converted slide {slide_index} to {slide_path}")
+                    
+                except Exception as e:
+                    logging.warning(f"Failed to convert slide {slide_index}: {e}")
+                    continue
+            
+            # Clean up uploaded file
+            try:
+                slides_api.delete_file(filename)
+                logging.info(f"Cleaned up uploaded file: {filename}")
+            except:
+                pass  # Ignore cleanup errors
+            
+            if not slide_files:
+                raise Exception("No slides were successfully converted")
+            
+            logging.info(f"Successfully converted {len(slide_files)} slides using Aspose Cloud API")
             return slide_files
             
+        except ImportError:
+            logging.error("asposeslidescloud not installed. Please install with: pip install asposeslidescloud")
+            return []
         except Exception as e:
-            logging.warning(f"LibreOffice conversion failed: {e}")
+            logging.warning(f"Aspose Cloud API conversion failed: {e}")
             return []
 
     def _build_video_inputs(self, slide_notes: List[str]) -> List[Dict]:
