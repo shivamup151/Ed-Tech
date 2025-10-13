@@ -397,19 +397,13 @@ export default function LibraryPage() {
       throw new Error('No comic images available for download');
     }
 
-    // Support multiple formats for comics
+    // Support DOCX format for comics
     switch (format) {
       case 'doc':
         await downloadComicAsDOCX(comicImages, comic, filename);
         break;
-      case 'image':
-        await downloadComicAsImages(comicImages, filename);
-        break;
-      case 'pdf':
-        await downloadComicAsPDF(comicImages, comic, filename);
-        break;
       default:
-        throw new Error(`Format ${format} is not supported for comics. Supported formats: DOCX, PDF, Images`);
+        throw new Error(`Format ${format} is not supported for comics. Supported format: DOCX`);
     }
   };
 
@@ -1010,8 +1004,6 @@ export default function LibraryPage() {
     switch (contentType) {
       case 'comic':
         return [
-          { value: 'image', label: 'Images (.jpg)', description: 'Download all comic panels as individual image files' },
-          { value: 'pdf', label: 'PDF (.pdf)', description: 'Comic panels in PDF format with embedded images' },
           { value: 'doc', label: 'Word Document (.docx)', description: 'Comic panels in Word format with embedded images' }
         ];
       case 'image':
