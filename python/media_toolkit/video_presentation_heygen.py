@@ -280,9 +280,14 @@ class PPTXToHeyGenVideo:
                 logging.info("PowerPoint COM automation completed successfully")
                 
             else:
-                # For non-Windows systems, try using LibreOffice
-                logging.info("Windows not detected, trying LibreOffice conversion...")
-                slide_image_paths = self._convert_with_libreoffice(pptx_path, temp_dir)
+                # For non-Windows systems, use Spire.Presentation (pure Python, no watermarks)
+                logging.info("Windows not detected, using Spire.Presentation for conversion...")
+                slide_image_paths = self._convert_with_spire(pptx_path, temp_dir)
+                
+                # If Spire fails, try LibreOffice as fallback
+                if not slide_image_paths:
+                    logging.warning("Spire.Presentation conversion failed, trying LibreOffice fallback...")
+                    slide_image_paths = self._convert_with_libreoffice(pptx_path, temp_dir)
                 
         except Exception as e:
             logging.error(f"Slide export failed: {e}")
@@ -293,8 +298,53 @@ class PPTXToHeyGenVideo:
 
         self.slide_asset_ids = [self._upload_asset_to_heygen(p, folder_id) for p in slide_image_paths]
 
+    def _convert_with_spire(self, pptx_path: str, temp_dir: str) -> List[str]:
+        """Convert PowerPoint to images using Spire.Presentation (pure Python, no watermarks)"""
+        try:
+            from spire.presentation import Presentation
+            
+            logging.info("Using Spire.Presentation for slide conversion...")
+            
+            # Load the presentation
+            presentation = Presentation()
+            presentation.LoadFromFile(pptx_path)
+            
+            slide_files = []
+            
+            # Convert each slide to PNG image
+            for i, slide in enumerate(presentation.Slides):
+                try:
+                    # Export slide as image
+                    slide_path = os.path.join(temp_dir, f"slide_{i + 1}.png")
+                    
+                    # Save slide as image
+                    image = slide.SaveAsImage()
+                    image.Save(slide_path)
+                    slide_files.append(slide_path)
+                    logging.info(f"Converted slide {i + 1} to {slide_path}")
+                    
+                except Exception as e:
+                    logging.warning(f"Failed to convert slide {i + 1}: {e}")
+                    continue
+            
+            # Dispose presentation
+            presentation.Dispose()
+            
+            if not slide_files:
+                raise Exception("No slides were successfully converted")
+            
+            logging.info(f"Successfully converted {len(slide_files)} slides using Spire.Presentation")
+            return slide_files
+                
+        except ImportError:
+            logging.error("Spire.Presentation not installed. Please install with: pip install spire.presentation.free")
+            return []
+        except Exception as e:
+            logging.warning(f"Spire.Presentation conversion failed: {e}")
+            return []
+
     def _convert_with_libreoffice(self, pptx_path: str, temp_dir: str) -> List[str]:
-        """Convert PowerPoint to images using LibreOffice"""
+        """Convert PowerPoint to images using LibreOffice (fallback method)"""
         try:
             import subprocess
             import os
