@@ -260,6 +260,28 @@ class PPTXToHeyGenVideo:
         
         raise RuntimeError(f"File upload failed for {file_name} after multiple retries.")
 
+    def _upload_slide_to_r2(self, file_path: str) -> str:
+        """Upload slide image to R2 storage and return public URL"""
+        try:
+            from lib.cloudinary import upload_to_cloudinary
+            
+            file_name = os.path.basename(file_path)
+            logging.info(f"Uploading {file_name} to R2 storage...")
+            
+            # Upload to R2 via Cloudinary
+            result = upload_to_cloudinary(file_path, folder="heygen-slides")
+            
+            if result and result.get('secure_url'):
+                image_url = result['secure_url']
+                logging.info(f"Successfully uploaded {file_name} to R2: {image_url}")
+                return image_url
+            else:
+                raise Exception(f"Failed to get URL from R2 upload: {result}")
+                
+        except Exception as e:
+            logging.error(f"Failed to upload {file_name} to R2: {e}")
+            raise
+
     def _extract_slides_as_images_and_upload(self, pptx_path: str, prs: Presentation, folder_id: str):
         import tempfile
         import sys
@@ -300,7 +322,8 @@ class PPTXToHeyGenVideo:
         if not slide_image_paths:
             raise RuntimeError("Failed to extract any slide images")
 
-        self.slide_asset_ids = [self._upload_asset_to_heygen(p, folder_id) for p in slide_image_paths]
+        # Upload slide images to R2 storage and get URLs
+        self.slide_image_urls = [self._upload_slide_to_r2(p) for p in slide_image_paths]
 
 
     def _convert_with_aspose_cloud(self, pptx_path: str, temp_dir: str) -> List[str]:
@@ -439,12 +462,13 @@ class PPTXToHeyGenVideo:
             }
 
             # FIXED: Proper background handling - ensure slides are visible
-            if self.use_slides_as_background and idx < len(self.slide_asset_ids):
-                asset_id = self.slide_asset_ids[idx]
-                logging.info(f"Setting background for scene {idx + 1} with asset_id: {asset_id}")
+            if self.use_slides_as_background and idx < len(self.slide_image_urls):
+                image_url = self.slide_image_urls[idx]
+                logging.info(f"Setting background for scene {idx + 1} with image_url: {image_url}")
                 scene["background"] = {
                     "type": "image", 
-                    "image_asset_id": asset_id
+                    "url": image_url,
+                    "fit": "cover"
                     # No position object - let HeyGen handle the full background
                 }
             else:
