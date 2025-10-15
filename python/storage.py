@@ -194,7 +194,7 @@ class CloudflareR2Storage:
 
     def get_public_url(self, key: str) -> Optional[str]:
         """Generate public URL for R2 object"""
-        public_domain = os.getenv("R2_PUBLIC_DOMAIN")
+        public_domain = os.getenv("R2_PUBLIC_URL")
         if public_domain:
             return f"{public_domain}/{key}"
         # Fallback to default R2 dev domain
