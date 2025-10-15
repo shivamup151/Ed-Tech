@@ -3,77 +3,171 @@ import time
 import json
 import logging
 import mimetypes
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Tuple
+import io
+import asyncio
 
 import requests
 from dotenv import load_dotenv
 from pptx import Presentation
-from pptx.util import Inches, Pt
-from pptx.enum.text import PP_ALIGN
-from pptx.dml.color import RGBColor
+from openai import OpenAI
 
-# --- OpenAI SDK Setup ---
+# --- NEW: Cloudinary SDK and configuration ---
 try:
-    from openai import OpenAI
+    import cloudinary
+    import cloudinary.uploader
+    from cloudinary.utils import cloudinary_url
 except ImportError:
-    raise ImportError("OpenAI SDK not found. Install with: pip install openai")
+    raise ImportError("Cloudinary SDK not found. Install with: pip install cloudinary")
+
+
+# --- Aspose.Slides Cloud SDK Setup ---
+try:
+    import asposeslidescloud
+    from asposeslidescloud.api_client import ApiClient
+    from asposeslidescloud.configuration import Configuration
+    from asposeslidescloud.apis.slides_api import SlidesApi
+except ImportError:
+    raise ImportError("Aspose.Slides Cloud SDK not found. Install with: pip install asposeslidescloud")
+
 
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 
+# --- MODIFIED: CloudinaryStorage Class with Upload Functionality ---
+class CloudinaryStorage:
+    """
+    A storage manager to interact with Cloudinary for retrieving and uploading files.
+    """
+    def __init__(self):
+        cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
+        api_key = os.getenv("CLOUDINARY_API_KEY")
+        api_secret = os.getenv("CLOUDINARY_API_SECRET")
+
+        if not all([cloud_name, api_key, api_secret]):
+            raise ValueError("Missing Cloudinary environment variables: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET")
+
+        cloudinary.config(
+            cloud_name=cloud_name,
+            api_key=api_key,
+            api_secret=api_secret,
+            secure=True
+        )
+        logging.info("Cloudinary storage manager initialized.")
+
+    def get_file_content_bytes(self, public_id: str) -> Optional[bytes]:
+        """
+        Retrieves a file from Cloudinary using its public ID.
+        For non-image files like PPTX, we must specify resource_type='raw'.
+        """
+        try:
+            file_url, _ = cloudinary_url(public_id, resource_type="raw")
+            logging.info(f"Fetching file from Cloudinary URL: {file_url}")
+            response = requests.get(file_url, timeout=60)
+            response.raise_for_status()
+            return response.content
+        except Exception as e:
+            logging.error(f"Failed to retrieve file '{public_id}' from Cloudinary: {e}")
+            return None
+
+    def upload_file(self, file_data: bytes, public_id: str) -> Tuple[bool, str]:
+        """
+        Uploads a file to Cloudinary.
+        Returns a tuple (success, public_id_or_error_message).
+        """
+        try:
+            logging.info(f"Uploading file to Cloudinary with public_id: {public_id}")
+            upload_result = cloudinary.uploader.upload(
+                io.BytesIO(file_data),
+                public_id=public_id,
+                resource_type="raw",  # Use 'raw' for non-media files like PPTX
+                overwrite=True
+            )
+            # Return the public_id from the result
+            returned_public_id = upload_result.get("public_id")
+            if not returned_public_id:
+                raise Exception("Cloudinary upload did not return a public_id.")
+            return True, returned_public_id
+        except Exception as e:
+            error_msg = f"Cloudinary upload failed: {e}"
+            logging.error(error_msg)
+            return False, error_msg
+
+    async def upload_file_async(self, file_data: bytes, public_id: str) -> Tuple[bool, str]:
+        """Asynchronous wrapper for upload_file."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None,
+            self.upload_file,
+            file_data,
+            public_id
+        )
+
+
 class PPTXToHeyGenVideo:
     def __init__(
         self,
+        storage_manager: CloudinaryStorage,
         heygen_api_key: Optional[str] = None,
         openai_api_key: Optional[str] = None,
-        avatar_id: Optional[str] = None,
-        voice_id: Optional[str] = None,
-        model: str = "gpt-4o",
-        width: int = 1920,
-        height: int = 1080,
-        background_color: str = "#FFFFFF",
-        request_timeout_s: int = 70,
-        poll_interval_s: int = 5,
         pptx_avatar_id: Optional[str] = None,
         pptx_voice_id: Optional[str] = None,
-        use_slides_as_background: bool = True,
-        language: str = "english",  # NEW: Language support
-        storage_manager: Optional[Any] = None,  # NEW: Add storage manager
+        language: str = "english",
+        model: str = "gpt-4o",
+        width: int = 1280,
+        height: int = 720,
+        request_timeout_s: int = 90,
+        poll_interval_s: int = 10,
     ):
+        # --- Service Clients and Keys ---
+        self.storage_manager = storage_manager
         self.heygen_api_key = heygen_api_key or os.getenv("HEYGEN_API_KEY")
         self.openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
+        self.aspose_client_id = os.getenv("ASPOSE_CLIENT_ID")
+        self.aspose_client_secret = os.getenv("ASPOSE_CLIENT_SECRET")
+
+        # --- HeyGen Configuration ---
         self.avatar_id = pptx_avatar_id or os.getenv("HEYGEN_AVATAR_ID")
         self.voice_id = pptx_voice_id or os.getenv("HEYGEN_VOICE_ID")
+        self.language = language
         self.model = model
         self.width = width
         self.height = height
-        self.background_color = background_color
+        self.background_color = "#FFFFFF"
         self.request_timeout_s = request_timeout_s
         self.poll_interval_s = poll_interval_s
-        self.use_slides_as_background = use_slides_as_background
-        self.language = language.lower()  # NEW: Store language preference
-        self.storage_manager = storage_manager  # NEW: Store reference
         self.slide_asset_ids: List[str] = []
-        self.slide_image_urls: List[str] = []  # NEW: Store R2 slide image URLs
 
+        # --- Validate Configuration ---
+        if not self.storage_manager:
+            raise ValueError("A storage_manager instance is required.")
         if not self.heygen_api_key:
             raise ValueError("Missing HEYGEN_API_KEY")
         if not self.openai_api_key:
             raise ValueError("Missing OPENAI_API_KEY")
+        if not self.aspose_client_id or not self.aspose_client_secret:
+            raise ValueError("Missing ASPOSE_CLIENT_ID or ASPOSE_CLIENT_SECRET")
         if not self.avatar_id:
             raise ValueError("Missing HEYGEN_AVATAR_ID")
         if not self.voice_id:
             raise ValueError("Missing HEYGEN_VOICE_ID")
 
-        self._client = OpenAI(api_key=self.openai_api_key)
+        # --- Initialize API Clients ---
+        self._openai_client = OpenAI(api_key=self.openai_api_key)
         self._heygen_base_v2 = "https://api.heygen.com/v2"
         self._headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
             "X-Api-Key": self.heygen_api_key,
         }
+        
+        # Configure and initialize Aspose.Slides Cloud API client
+        aspose_config = Configuration()
+        aspose_config.app_sid = self.aspose_client_id
+        aspose_config.app_key = self.aspose_client_secret
+        self._slides_api = SlidesApi(aspose_config)
 
     def _post_with_retry(self, url: str, payload: Dict) -> requests.Response:
         for attempt in range(3):
@@ -82,16 +176,7 @@ class PPTXToHeyGenVideo:
                 resp.raise_for_status()
                 return resp
             except requests.RequestException as e:
-                # Log the response content for debugging
-                if hasattr(e, 'response') and e.response is not None:
-                    try:
-                        error_content = e.response.text
-                        logging.warning(f"POST attempt {attempt + 1} failed: {e}")
-                        logging.warning(f"Response content: {error_content}")
-                    except:
-                        logging.warning(f"POST attempt {attempt + 1} failed: {e}")
-                else:
-                    logging.warning(f"POST attempt {attempt + 1} failed: {e}")
+                logging.warning(f"POST attempt {attempt + 1} failed: {e}")
                 if attempt == 2:
                     raise
                 time.sleep(2 ** attempt)
@@ -110,381 +195,96 @@ class PPTXToHeyGenVideo:
                 time.sleep(2 ** attempt)
         raise RuntimeError("Unreachable")
 
-    # NEW: Fetch actual voices from HeyGen API using correct endpoint
-    def get_available_voices_from_api(self) -> List[Dict]:
-        """Fetch actual voices from HeyGen API using correct endpoint"""
-        try:
-            # Try the correct endpoint
-            url = "https://api.heygen.com/v1/brand_voice/list"
-            response = self._get_with_retry(url)
-            data = response.json()
-            
-            voices = data.get("data", [])
-            logging.info(f"Fetched {len(voices)} voices from HeyGen API")
-            
-            # Log all voices to see what's available
-            for voice in voices[:10]:  # Log first 10 voices
-                voice_id = voice.get('voice_id') or voice.get('id')
-                voice_name = voice.get('name', 'Unknown')
-                language = voice.get('language', 'Unknown')
-                logging.info(f"Voice: {voice_name} - ID: {voice_id} - Language: {language}")
-            
-            return voices
-                
-        except Exception as e:
-            logging.error(f"Error fetching voices from API: {e}")
-            return []
-
-    # NEW: Find Arabic-compatible voices
-    def find_arabic_voices(self) -> List[str]:
-        """Find voices that actually support Arabic"""
-        try:
-            voices = self.get_available_voices_from_api()
-            
-            arabic_voices = []
-            for voice in voices:
-                voice_id = voice.get('voice_id') or voice.get('id')
-                voice_name = voice.get('name', 'Unknown')
-                language = voice.get('language', '')
-                
-                # Check if voice supports Arabic
-                if (language.lower() == 'arabic' or 
-                    'arabic' in language.lower() or
-                    'ar' in language.lower() or
-                    'arabic' in voice_name.lower()):
-                    
-                    arabic_voices.append(voice_id)
-                    logging.info(f"Found Arabic voice: {voice_name} - ID: {voice_id}")
-            
-            if not arabic_voices:
-                logging.warning("No Arabic voices found in API response")
-                # Try some alternative voice IDs that might work
-                alternative_voices = [
-                    "bb2850ee8c76464d8e3d43f51b963fd1",  # Christine
-                    "1776ddbd05374fa480e92f0297bbc67e",  # Melissa
-                    "080f8e5cb3ae424989242b0efe5205e6",  # Ceecee
-                    "baae7852b7824c8aaec62fc1c4e3064b",  # Rex
-                ]
-                logging.info(f"Using alternative voices: {alternative_voices}")
-                return alternative_voices
-            
-            return arabic_voices
-            
-        except Exception as e:
-            logging.error(f"Error finding Arabic voices: {e}")
-            return ["bb2850ee8c76464d8e3d43f51b963fd1"]  # Fallback
-
-    # NEW: Use actual Arabic voice IDs from voice_details.txt
-    def get_voice_for_language(self, language: str) -> str:
-        """Get the best voice for the specified language"""
-        if language.lower() == 'arabic':
-            # These are ACTUAL Arabic voice IDs from HeyGen
-            arabic_voices = [
-                "042173e02d18478384c64fdfe37ddd67",  # GHIZLANE (Female)
-                "04fa555734714c3a90ac08a1ed64021c",  # Moncellence (Male)
-                "0eb85e6e8710473b82f7e88609ba3053",  # Hushed Hiba - Excited (Female)
-                "61cfb9ee298d419fa76d7f913f817447",  # Hakeem Hassan (Male)
-                "61cfb9ee298d419fa76d7f913f817447",  # Sana (Female)
-                "7042665eceec4300afd14e4f3ecf9157",  # Sana (Female)
-                "e406a437e338443e9412162a0fff5289",  # Hushed Hiba (Female)
-                "d12916aac1c44e6e8025ad820f1e9d4a",  # Hushed Hiba - Friendly (Female)
-            ]
-            
-            # Use the first Arabic voice
-            selected_voice = arabic_voices[0]
-            logging.info(f"Selected Arabic voice: {selected_voice} (GHIZLANE)")
-            return selected_voice
-        else:
-            return self.voice_id
-
-    # NEW: Validate voice and language compatibility
-    def validate_voice_language_compatibility(self, voice_id: str, language: str) -> bool:
-        """Check if the selected voice supports the specified language"""
-        try:
-            # Since all our voices are multilingual, they support any language
-            voices = self.get_available_voices_from_api(language)
-            for voice in voices:
-                if voice.get("voice_id") == voice_id:
-                    return True
-            return False
-        except Exception as e:
-            logging.error(f"Error validating voice compatibility: {e}")
-            return False
-
-    def _create_heygen_folder(self, folder_name: str) -> str:
-        logging.info(f"Creating HeyGen asset folder: {folder_name}")
-        payload = {"name": folder_name}
-        url = "https://api.heygen.com/v1/folders/create"
-        response = self._post_with_retry(url, payload)
-        
-        folder_id = response.json().get("data", {}).get("id")
-
-        if not folder_id:
-            raise RuntimeError(f"Failed to create HeyGen folder: {response.text}")
-        logging.info(f"Successfully created folder with ID: {folder_id}")
-        return folder_id
-
-    def _upload_asset_to_heygen(self, file_path: str, folder_id: str) -> str:
-        file_name = os.path.basename(file_path)
-        
-        # Explicitly set MIME type for PNG files
-        if file_name.lower().endswith('.png'):
+    def _upload_asset_to_heygen(self, file_bytes: bytes, file_name: str) -> str:
+        mime_type, _ = mimetypes.guess_type(file_name)
+        if not mime_type:
             mime_type = "image/png"
-        elif file_name.lower().endswith('.jpg') or file_name.lower().endswith('.jpeg'):
-            mime_type = "image/jpeg"
-        else:
-            mime_type, _ = mimetypes.guess_type(file_path)
-            if not mime_type:
-                mime_type = "image/png"  # Default to PNG
 
-        # Check if file exists and get its size
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found: {file_path}")
-        
-        file_size = os.path.getsize(file_path)
-        logging.info(f"Uploading {file_name} to HeyGen (target folder: {folder_id}) with MIME type: {mime_type}, file size: {file_size} bytes...")
-
+        logging.info(f"Uploading {file_name} to HeyGen...")
         url = "https://upload.heygen.com/v1/asset"
-        
-        upload_headers = {
-            "X-Api-Key": self.heygen_api_key,
-        }
-        
-        # Add folder_id as query parameter if provided
-        if folder_id:
-            url = f"{url}?folder_id={folder_id}"
+        upload_headers = {"X-Api-Key": self.heygen_api_key, "Content-Type": mime_type}
+        file_like_object = io.BytesIO(file_bytes)
 
-        with open(file_path, 'rb') as f:
-            for attempt in range(3):
-                try:
-                    f.seek(0)
-                    # Use files parameter for proper file upload with Content-Type
-                    # HeyGen expects 'file' as the field name
-                    files = {'file': (file_name, f, mime_type)}
-                    
-                    # Debug: Log the request details
-                    logging.info(f"Request URL: {url}")
-                    logging.info(f"Request headers: {upload_headers}")
-                    logging.info(f"Files parameter: {list(files.keys())}")
-                    
-                    resp = requests.post(url, headers=upload_headers, files=files, timeout=self.request_timeout_s)
-                    
-                    # Log the response for debugging
-                    if resp.status_code != 200:
-                        logging.error(f"HeyGen upload failed with status {resp.status_code}: {resp.text}")
-                    
-                    resp.raise_for_status()
-                    
-                    response_data = resp.json()
-                    asset_id = response_data.get("data", {}).get("id")
+        for attempt in range(3):
+            try:
+                file_like_object.seek(0)
+                resp = requests.post(url, headers=upload_headers, data=file_like_object, timeout=self.request_timeout_s)
+                resp.raise_for_status()
+                response_data = resp.json()
+                asset_id = response_data.get("data", {}).get("id")
 
-                    if not asset_id:
-                        raise RuntimeError(f"Failed to get asset_id from HeyGen response: {response_data}")
+                if not asset_id:
+                    raise RuntimeError(f"Failed to get asset_id from HeyGen response: {response_data}")
 
-                    logging.info(f"Successfully uploaded {file_name}. Asset ID: {asset_id}")
-                    return asset_id
-
-                except requests.RequestException as e:
-                    logging.warning(f"Upload attempt {attempt + 1} for {file_name} failed: {e}")
-                    if attempt == 2:
-                        raise
-                    time.sleep(2 ** attempt)
-        
+                logging.info(f"Successfully uploaded {file_name}. Asset ID: {asset_id}")
+                return asset_id
+            except requests.RequestException as e:
+                logging.warning(f"Upload attempt {attempt + 1} for {file_name} failed: {e}")
+                if attempt == 2:
+                    raise
+                time.sleep(2 ** attempt)
         raise RuntimeError(f"File upload failed for {file_name} after multiple retries.")
 
-
-    def _extract_slides_as_images_and_upload(self, pptx_path: str, prs: Presentation, folder_id: str):
-        import tempfile
-        import sys
-        
-        temp_dir = tempfile.mkdtemp()
-        logging.info(f"Created temporary directory for slide images: {temp_dir}")
-        
-        slide_image_paths = []
-        try:
-            if sys.platform == "win32":
-                import win32com.client
-                logging.info("Using PowerPoint COM automation to export slides...")
-                powerpoint = win32com.client.Dispatch("PowerPoint.Application")
-                presentation = powerpoint.Presentations.Open(os.path.abspath(pptx_path), ReadOnly=True, WithWindow=False)
-                
-                num_slides_to_process = len(prs.slides)
-                for i in range(1, num_slides_to_process + 1):
-                    path = os.path.join(temp_dir, f"slide_{i}.png")
-                    slide = presentation.Slides(i)
-                    # FIXED: Use correct Export method parameters
-                    slide.Export(path, "PNG")
-                    slide_image_paths.append(path)
-                    logging.info(f"Exported slide {i} to {path}")
-                
-                presentation.Close()
-                powerpoint.Quit()
-                logging.info("PowerPoint COM automation completed successfully")
-                
-            else:
-                # For non-Windows systems, use Aspose Cloud API
-                logging.info("Windows not detected, using Aspose Cloud API for conversion...")
-                slide_image_paths = self._convert_with_aspose_cloud(pptx_path, temp_dir)
-                
-        except Exception as e:
-            logging.error(f"Slide export failed: {e}")
-            raise RuntimeError(f"Failed to export slides from PowerPoint file: {e}")
-
-        if not slide_image_paths:
-            raise RuntimeError("Failed to extract any slide images")
-
-        # Upload slide images to HeyGen and get asset IDs
-        self.slide_asset_ids = [self._upload_asset_to_heygen(p, folder_id) for p in slide_image_paths]
-
-
-    def _convert_with_aspose_cloud(self, pptx_path: str, temp_dir: str) -> List[str]:
-        """Convert PowerPoint to images using Aspose Cloud API (no watermarks)"""
-        try:
-            import asposeslidescloud
-            from asposeslidescloud.configuration import Configuration
-            from asposeslidescloud.apis.slides_api import SlidesApi
-            import uuid
-            
-            # Configure API credentials
-            configuration = Configuration()
-            configuration.app_sid = os.getenv("ASPOSE_CLIENT_ID")
-            configuration.app_key = os.getenv("ASPOSE_CLIENT_SECRET")
-            slides_api = SlidesApi(configuration)
-            
-            if not configuration.app_sid or not configuration.app_key:
-                raise Exception("ASPOSE_CLIENT_ID and ASPOSE_CLIENT_SECRET environment variables are required")
-            
-            logging.info("Using Aspose Cloud API for slide conversion...")
-            
-            # Generate unique filename for upload
-            filename = f"presentation_{uuid.uuid4().hex}.pptx"
-            
-            # Upload the presentation - read file data first
-            with open(pptx_path, 'rb') as f:
-                file_data = f.read()
-            
-            upload_result = slides_api.upload_file(filename, file_data)
-            logging.info(f"Uploaded presentation: {filename}")
-            
-            # Get presentation info to know slide count
-            presentation_info = slides_api.get_slides(filename)
-            slide_count = len(presentation_info.slide_list)
-            logging.info(f"Found {slide_count} slides in presentation")
-            
-            slide_files = []
-            
-            # Download each slide as PNG
-            for slide_index in range(1, slide_count + 1):
-                try:
-                    # Download slide as PNG image
-                    image_data = slides_api.download_slide(filename, slide_index, "png")
-                    logging.info(f"Downloaded slide {slide_index} data type: {type(image_data)}, size: {len(image_data) if hasattr(image_data, '__len__') else 'unknown'}")
-                    
-                    # Save image to temp directory
-                    slide_path = os.path.join(temp_dir, f"slide_{slide_index}.png")
-                    
-                    # Handle different response formats from Aspose API
-                    if isinstance(image_data, str):
-                        # If it's a string, it's likely base64 encoded image data
-                        import base64
-                        try:
-                            # Try to decode as base64
-                            image_bytes = base64.b64decode(image_data)
-                        except:
-                            # If not base64, treat as raw string
-                            image_bytes = image_data.encode('utf-8')
-                    else:
-                        # If it's already bytes, use as is
-                        image_bytes = image_data
-                    
-                    # Save the image directly without PIL processing
-                    # Aspose API should return valid PNG data
-                    with open(slide_path, 'wb') as f:
-                        f.write(image_bytes)
-                    
-                    # Validate the saved image
-                    try:
-                        from PIL import Image
-                        # Try to open the saved image to verify it's valid
-                        with Image.open(slide_path) as img:
-                            # Just verify it can be opened - don't modify
-                            logging.info(f"Validated slide {slide_index} image: {img.size}, mode: {img.mode}")
-                    except Exception as img_error:
-                        logging.warning(f"Image validation failed for slide {slide_index}: {img_error}")
-                        # Continue anyway - the file might still work
-                    
-                    slide_files.append(slide_path)
-                    logging.info(f"Converted slide {slide_index} to {slide_path}")
-                    
-                except Exception as e:
-                    logging.warning(f"Failed to convert slide {slide_index}: {e}")
-                    continue
-            
-            # Clean up uploaded file
+    def _convert_pptx_and_upload_slides(self, pptx_storage_key: str, pptx_bytes: bytes, num_slides: int) -> List[str]:
+        temp_storage_keys = []
+        logging.info(f"Converting {num_slides} slides to images using Aspose.Slides Cloud...")
+        for i in range(1, num_slides + 1):
+            temp_file_path = None
             try:
-                slides_api.delete_file(filename)
-                logging.info(f"Cleaned up uploaded file: {filename}")
-            except:
-                pass  # Ignore cleanup errors
-            
-            if not slide_files:
-                raise Exception("No slides were successfully converted")
-            
-            logging.info(f"Successfully converted {len(slide_files)} slides using Aspose Cloud API")
-            return slide_files
-            
-        except ImportError:
-            logging.error("asposeslidescloud not installed. Please install with: pip install asposeslidescloud")
-            return []
-        except Exception as e:
-            logging.warning(f"Aspose Cloud API conversion failed: {e}")
-            return []
+                # FIX: The Aspose SDK's `download_slide_online` method returns a file path (`str`)
+                # to a temporary file, not a stream object.
+                temp_file_path = self._slides_api.download_slide_online(
+                    document=io.BytesIO(pptx_bytes),
+                    slide_index=i,
+                    format='PNG'
+                )
+                
+                # We must now open and read the bytes from this temporary file.
+                with open(temp_file_path, 'rb') as f:
+                    slide_image_bytes = f.read()
+
+                if not slide_image_bytes:
+                    raise ValueError(f"Aspose API returned an empty image for slide {i}.")
+                
+                slide_filename = f"slide_{i}.png"
+                asset_id = self._upload_asset_to_heygen(slide_image_bytes, slide_filename)
+                self.slide_asset_ids.append(asset_id)
+                logging.info(f"Processed and uploaded slide {i}/{num_slides}.")
+
+            except Exception as e:
+                logging.error(f"Failed to process slide {i}: {e}", exc_info=True)
+                continue
+            finally:
+                # CRITICAL FIX: Clean up the temporary file created by the Aspose SDK.
+                if temp_file_path and os.path.exists(temp_file_path):
+                    try:
+                        os.remove(temp_file_path)
+                        logging.info(f"Cleaned up temporary file: {temp_file_path}")
+                    except OSError as e:
+                        logging.error(f"Error removing temporary file {temp_file_path}: {e}")
+
+        return temp_storage_keys
+
 
     def _build_video_inputs(self, slide_notes: List[str]) -> List[Dict]:
-        """FIXED: Proper background positioning and avatar placement with larger size"""
         video_inputs: List[Dict] = []
-        
         for idx, note in enumerate(slide_notes):
             scene = {
                 "character": {
                     "type": "talking_photo",
                     "talking_photo_id": self.avatar_id,
                     "talking_photo_style": "circle",
-                    # FIXED: Increased avatar size to be more visible
-                    "scale": 0.25,  # Increased from 0.08 to 0.25 (3x larger)
-                    "offset": {
-                        # FIXED: Position in bottom-right corner with proper margins
-                        "x": 0.35,  # Move more to the right
-                        "y": 0.35   # Move higher up to avoid slide content
-                    },
+                    "scale": 0.33,
+                    "offset": {"x": 0.42, "y": 0.42},
                 },
-                "voice": {
-                    "type": "text", 
-                    "input_text": note, 
-                    "voice_id": self.voice_id,
-                    # NEW: Try adding language parameter to voice
-                    "language": "ar" if self.language.lower() == 'arabic' else "en"
-                },
+                "voice": {"type": "text", "input_text": note, "voice_id": self.voice_id},
             }
-
-            # FIXED: Proper background handling - use HeyGen asset IDs
-            if self.use_slides_as_background and idx < len(self.slide_asset_ids):
+            if idx < len(self.slide_asset_ids):
                 asset_id = self.slide_asset_ids[idx]
-                logging.info(f"Setting background for scene {idx + 1} with asset_id: {asset_id}")
-                scene["background"] = {
-                    "type": "image", 
-                    "asset_id": asset_id,
-                    "fit": "cover"
-                    # No position object - let HeyGen handle the full background
-                }
+                scene["background"] = {"type": "image", "image_asset_id": asset_id}
             else:
-                scene["background"] = {
-                    "type": "color", 
-                    "value": self.background_color
-                }
-            
+                scene["background"] = {"type": "color", "value": self.background_color}
             video_inputs.append(scene)
-            
         return video_inputs
 
     def create_multi_scene_video(self, slide_notes: List[str], title: str) -> Dict:
@@ -498,158 +298,97 @@ class PPTXToHeyGenVideo:
         resp = self._post_with_retry(generate_url, payload)
         data = resp.json()
         video_id = data.get("data", {}).get("video_id")
-        logging.info(f"Generating video using video_id : {video_id}, with Avatar id {self.avatar_id} and voice id {self.voice_id}.")
+        logging.info(f"Generating video with video_id: {video_id}, Avatar ID: {self.avatar_id}, Voice ID: {self.voice_id}.")
         if not video_id:
             raise RuntimeError(f"Unexpected response from generate endpoint: {resp.text}")
         return {"video_id": video_id}
 
-    def wait_for_video(self, video_id: str) -> Dict:        
-        """Polls the HeyGen API for the video status indefinitely until it is either 'completed' or 'failed'."""
-        logging.info(f"Waiting for video {video_id} to complete. with Avatar id {self.avatar_id} and voice id {self.voice_id}. Polling status...")
-
+    def wait_for_video(self, video_id: str) -> Dict:
+        logging.info(f"Waiting for video {video_id} to complete. Polling status...")
         while True:
             status_url = f"https://api.heygen.com/v1/video_status.get?video_id={video_id}"
             try:
                 resp = self._get_with_retry(status_url)
                 data = resp.json().get("data", {})
                 status = data.get("status")
-
                 if status in ("completed", "success"):
                     logging.info("Video generation completed successfully.")
                     return {"status": "completed", "video_url": data.get("video_url")}
-                
                 elif status in ("failed", "error"):
                     logging.error(f"Video generation failed with data: {data}")
                     raise RuntimeError(f"Video generation failed: {data}")
-                
                 else:
                     logging.info(f"Video status is '{status}', continuing to wait...")
-
             except requests.RequestException as e:
                 logging.warning(f"Status check failed due to a network error: {e}. Retrying...")
-            
             time.sleep(self.poll_interval_s)
     
     def generate_speaker_notes(self, slide_texts: List[str]) -> List[str]:
         logging.info(f"Generating speaker notes for {len(slide_texts)} slides using model {self.model}...")
-        
         speaker_notes = []
         for i, text in enumerate(slide_texts):
             try:
-                # FIXED: Language-aware system prompt
                 system_prompt = (
-                    f"You are a professional virtual teacher creating engaging educational content in {self.language}. "
-                    "Your task is to explain presentation slide content in a clear, engaging, and educational manner. "
-                    "Create speaker notes that are conversational, informative, and easy to follow. "
-                    "Keep the explanation concise but comprehensive, suitable for video narration. "
-                    f"Use a professional yet approachable tone in {self.language} that keeps viewers engaged."
+                    f"You are a virtual teacher. Your task is to explain the content of a presentation slide in {self.language}. "
+                    "You will be given the text from a slide and must generate a clear, engaging, and educational script. "
+                    "Your tone should be professional yet approachable. Your entire response must be in {self.language}."
                 )
+                user_prompt = f"Here is the slide content:\n\n---\n\n{text}\n\n---\n\nPlease provide the speaker notes in {self.language}."
                 
-                user_prompt = f"Here is the slide content:\n\n---\n\n{text}\n\n---\n\nPlease provide engaging speaker notes for video narration in {self.language}. Keep it under 200 words and make it conversational."
-                
-                response = self._client.chat.completions.create(
+                response = self._openai_client.chat.completions.create(
                     model=self.model,
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},
                     ],
-                    temperature=0.7,
-                    max_tokens=300,
+                    temperature=0.7, max_tokens=300,
                 )
-                
                 note = response.choices[0].message.content.strip()
                 speaker_notes.append(note)
-                logging.info(f"Generated note for slide {i+1}: '{note[:100]}...'")
-
             except Exception as e:
                 logging.error(f"Failed to generate notes for slide {i+1}: {e}")
-                speaker_notes.append(f"Let me explain this slide content: {text}")
-
+                speaker_notes.append(f"Content for slide {i+1}: {text}")
         return speaker_notes
 
-    def convert(self, pptx_path: str, title: Optional[str] = None, max_slides: Optional[int] = None) -> Dict[str, Any]:
-        """
-        Convert a PowerPoint presentation to a HeyGen video.
-        """
-        logging.info(f"Starting conversion of {pptx_path}")
-        
-        # FIXED: Auto-select voice based on language
-        if self.language.lower() == 'arabic':
-            self.voice_id = self.get_voice_for_language(self.language)
-            logging.info(f"Auto-selected voice for Arabic: {self.voice_id}")
-        
-        logging.info(f"Using voice {self.voice_id} for language {self.language}")
-        
-        prs = Presentation(pptx_path)
-        slides = list(prs.slides)
-        
-        if not slides:
-            raise ValueError("No slides found in the PowerPoint file.")
-
-        if max_slides and len(slides) > max_slides:
-            logging.warning(f"Limiting to {max_slides} slides from {len(slides)}.")
-            slides = slides[:max_slides]
-        
-        # Better text extraction
-        slides_text = []
-        for slide in slides:
-            slide_text = []
-            for shape in slide.shapes:
-                if hasattr(shape, "text") and shape.text.strip():
-                    slide_text.append(shape.text.strip())
-            slides_text.append("\n".join(slide_text) if slide_text else f"Slide {len(slides_text) + 1}")
-
-        if self.use_slides_as_background:
-            folder_name = f"Slides_{os.path.basename(pptx_path)}_{int(time.time())}"
-            folder_id = self._create_heygen_folder(folder_name)
-            self._extract_slides_as_images_and_upload(pptx_path, prs, folder_id)
+    def convert(self, pptx_public_id: str, title: Optional[str] = None, max_slides: Optional[int] = None) -> Dict:
+        logging.info(f"Starting conversion for PPTX in Cloudinary with public_id: {pptx_public_id}")
+        try:
+            pptx_bytes = self.storage_manager.get_file_content_bytes(pptx_public_id)
+            if not pptx_bytes:
+                raise FileNotFoundError(f"Could not retrieve PPTX file from Cloudinary with public_id: {pptx_public_id}")
+            prs = Presentation(io.BytesIO(pptx_bytes))
+            slides = list(prs.slides)
+            if not slides:
+                raise ValueError("No slides found in the PowerPoint file.")
+            if max_slides and len(slides) > max_slides:
+                slides = slides[:max_slides]
+            slides_text = ["\n".join(s.text for s in slide.shapes if hasattr(s, "text") and s.text).strip() for slide in slides]
+            self._convert_pptx_and_upload_slides(pptx_public_id, pptx_bytes, len(slides))
             if len(self.slide_asset_ids) < len(slides_text):
-                logging.warning("Number of uploaded slide assets is less than the number of slides.")
                 slides_text = slides_text[:len(self.slide_asset_ids)]
-
-        slide_notes = self.generate_speaker_notes(slides_text)
-        
-        # Debug logging
-        logging.info(f"Generated {len(slide_notes)} slide notes")
-        logging.info(f"Slide notes: {slide_notes}")
-        logging.info(f"Slide asset IDs: {self.slide_asset_ids}")
-        
-        final_title = title or os.path.basename(pptx_path)
-        gen_info = self.create_multi_scene_video(slide_notes, title=final_title)
-        final_status = self.wait_for_video(gen_info["video_id"])
-
-        return {
-            "video_id": gen_info["video_id"],
-            "video_url": final_status.get("video_url"),
-            "slides_count": len(slide_notes),
-            "language": self.language,
-            "voice_id": self.voice_id
-        }
-
-def main():
-    pptx_file_path = input("enter ppt file path here :")
-    pptx_avatar_id = input("enter ppt avatar id here :")
-    pptx_voice_id = input("enter ppt voice id here :")
-    language = input("enter language (english/arabic): ").strip().lower() or "english"
-
-    if not os.path.exists(pptx_file_path):
-        logging.error(f"File not found: {pptx_file_path}")
-        logging.error("Please update the 'pptx_file_path' variable in the main() function with the correct path.")
-        return
-
-    try:
-        converter = PPTXToHeyGenVideo(
-            pptx_avatar_id=pptx_avatar_id,
-            pptx_voice_id=pptx_voice_id,
-            language=language
-        )
-        
-        result = converter.convert(pptx_file_path)
-        
-        print("\n--- Conversion Successful ---")
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        logging.error(f"An error occurred during conversion: {e}", exc_info=True)
+            slide_notes = self.generate_speaker_notes(slides_text)
+            final_title = title or os.path.basename(pptx_public_id)
+            gen_info = self.create_multi_scene_video(slide_notes, title=final_title)
+            final_status = self.wait_for_video(gen_info["video_id"])
+            return {
+                "video_id": gen_info["video_id"],
+                "video_url": final_status.get("video_url"),
+                "slides_count": len(slide_notes),
+            }
+        finally:
+            pass
 
 if __name__ == "__main__":
-    main()
+    try:
+        storage = CloudinaryStorage()
+        pptx_public_id_in_cloudinary = "test"
+        video_title = "My Test Presentation Video"
+        if not storage.get_file_content_bytes(pptx_public_id_in_cloudinary):
+             logging.error(f"File not found in Cloudinary storage with public_id: '{pptx_public_id_in_cloudinary}'")
+        else:
+            converter = PPTXToHeyGenVideo(storage_manager=storage)
+            result = converter.convert(pptx_public_id_in_cloudinary, title=video_title)
+            print("\n--- Conversion Successful ---")
+            print(json.dumps(result, indent=2))
+    except Exception as e:
+        logging.error(f"An error occurred during conversion: {e}", exc_info=True)

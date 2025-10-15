@@ -14,8 +14,6 @@ import json
 import asyncio
 import aiohttp
 from datetime import datetime
-import base64
-import numpy as np
 
 # --- Configure Logging ---
 logging.basicConfig(
@@ -28,50 +26,19 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # --- Import functionalities from your scripts ---
-
-# Chatbot imports
 from Student_chatbot.Student_AI_tutor import AsyncRAGTutor, RAGTutorConfig
 from AI_tutor import TeacherAsyncRAGTutor, TeacherRAGTutorConfig
-
-# Assessment generation imports
 from assessment import create_question_generation_chain, generate_test_questions_async, get_curriculum_context_async
-
-# Teaching content generation imports
 from teaching_content_generation import run_generation_pipeline_async as generate_teaching_content
-
-# Media toolkit imports
 from media_toolkit.slides_generation import SlideSpeakGenerator
 from media_toolkit.image_generation_model import ImageGenerator
-from media_toolkit.comics_generation import (
-    create_comical_story_prompt, 
-    generate_comic_image, 
-    parse_story_panels,
-    add_footer_text_to_image
-)
-from media_toolkit.video_presentation_heygen import PPTXToHeyGenVideo
-
-# Import Tavily for web search in voice
-try:
-    from tavily import TavilyClient
-    tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
-except:
-    tavily_client = None
-
-# Import the Perplexity chat instance from your module
-try:
-    from media_toolkit.websearch_schema_based import chat as pplx_chat
-except Exception as e:
-    pplx_chat = None
-    logger.warning(f"Perplexity chat not initialized: {e}")
-
-# Import the cloud storage manager
+from media_toolkit.comics_generation import create_comical_story_prompt, generate_comic_image
+# MODIFIED: Import CloudinaryStorage as well
+from media_toolkit.video_presentation_heygen import PPTXToHeyGenVideo, CloudinaryStorage
 from storage import CloudflareR2Storage
 from langchain_openai import OpenAIEmbeddings
-from langchain_qdrant import QdrantVectorStore
-import qdrant_client
 
 # --- FastAPI App Initialization ---
-logger.info("Starting AI Education Platform API...")
 app = FastAPI(
     title="AI Education Platform API",
     description="An AI-powered tools for tutoring, assessment creation, and teaching content generation.",
@@ -81,40 +48,33 @@ app = FastAPI(
 # --- Add CORS Middleware ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000","https://edupulseai.com" ,"https://ed-tech-alpha-sable.vercel.app"],  # Add your frontend URLs
+    allow_origins=["http://localhost:3000","https://edupulseai.com" ,"https://ed-tech-alpha-sable.vercel.app"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# --- Add request size limit middleware ---
-@app.middleware("http")
-async def increase_request_size_limit(request: Request, call_next):
-    # Increase the maximum request size to 50MB
-    request._max_content_length = 50 * 1024 * 1024  # 50MB
-    response = await call_next(request)
-    return response
 
 # --- Global Objects and Initializations ---
 logger.info("Initializing global components...")
 
 try:
-    # Initialize Storage Manager
+    # Initialize R2 Storage Manager (for chatbot, etc.)
     storage_manager = CloudflareR2Storage()
     logger.info("✅ Cloudflare R2 storage manager initialized.")
 
+    # --- NEW: Initialize Cloudinary Storage Manager (for video presentations) ---
+    try:
+        cloudinary_storage_manager = CloudinaryStorage()
+        logger.info("✅ Cloudinary storage manager initialized.")
+    except Exception as e:
+        cloudinary_storage_manager = None
+        logger.warning(f"⚠️ Cloudinary storage manager failed to initialize: {e}")
+
     # Initialize Tutor Sessions Dictionary
     tutor_sessions: Dict[str, AsyncRAGTutor] = {}
-    teacher_sessions: Dict[str, TeacherAsyncRAGTutor] = {} # New: Dictionary to store teacher sessions
-    # Add teacher tutor sessions
     teacher_tutor_sessions: Dict[str, Any] = {}
-
-
-    # Initialize other components
-    slide_generator = SlideSpeakGenerator()
-    image_generator = ImageGenerator()
     
-    # Initialize assessment chain
+    # Initialize other components
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if openai_api_key:
         assessment_chain = create_question_generation_chain(openai_api_key)
@@ -129,7 +89,6 @@ try:
 except Exception as e:
     logger.error(f"❌ Error initializing global components: {e}", exc_info=True)
     raise
-
 # ==============================
 # 1. HEALTH CHECK ENDPOINT
 # ==============================
@@ -1022,42 +981,38 @@ async def video_presentation_endpoint(
     voice_id: str = Form(...),
     talking_photo_id: str = Form(...),
     title: str = Form(...),
-    language: str = Form("english")  # NEW: Add language parameter
+    language: str = Form("english")
 ):
     """
-    Starts video generation and returns immediately with task ID.
-    Use check_video_status endpoint to poll for completion.
+    Starts video generation using Cloudinary for storage and returns a task ID.
     """
+    if not cloudinary_storage_manager:
+        raise HTTPException(status_code=500, detail="Cloudinary storage is not configured. Cannot process video presentations.")
+
     try:
         logger.info(f"Video presentation request received: {title}")
-        logger.info(f"Voice ID: {voice_id}, Talking Photo ID: {talking_photo_id}, Language: {language}")
-        
-        # Generate unique task ID
         task_id = str(uuid.uuid4())
         
-        # Save uploaded file temporarily
-        import tempfile
-        import os
+        # We process the file in the background task directly
+        content = await pptx_file.read()
         
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pptx') as temp_file:
-            content = await pptx_file.read()
-            temp_file.write(content)
-            temp_file_path = temp_file.name
-        
-        # Store task info
         video_generation_tasks[task_id] = {
             "status": "processing",
             "title": title,
-            "voice_id": voice_id,
-            "talking_photo_id": talking_photo_id,
-            "language": language,  # NEW: Store language
-            "temp_file_path": temp_file_path,
             "created_at": datetime.now().isoformat(),
             "error": None
         }
         
         # Start video generation in background
-        asyncio.create_task(generate_video_background(task_id, temp_file_path, voice_id, talking_photo_id, title, language))
+        asyncio.create_task(generate_video_background(
+            task_id,
+            content,
+            pptx_file.filename,
+            voice_id,
+            talking_photo_id,
+            title,
+            language
+        ))
         
         logger.info(f"Video generation task started with ID: {task_id}")
         
@@ -1072,30 +1027,41 @@ async def video_presentation_endpoint(
         logger.error(f"Error in video presentation endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Video generation failed: {str(e)}")
 
-async def generate_video_background(task_id: str, temp_file_path: str, voice_id: str, talking_photo_id: str, title: str, language: str = "english"):
-    """Background task to generate video"""
+async def generate_video_background(task_id: str, pptx_bytes: bytes, original_filename: str, voice_id: str, talking_photo_id: str, title: str, language: str = "english"):
+    """Background task to generate video using Cloudinary"""
     try:
         logger.info(f"Starting background video generation for task: {task_id}")
+
+        # 1. Create a unique public_id for Cloudinary storage
+        public_id = f"video_presentations/{task_id}_{original_filename}"
         
-        # Update task status
+        # 2. Upload the PPTX file to Cloudinary
+        success, result_id_or_error = await cloudinary_storage_manager.upload_file_async(pptx_bytes, public_id)
+
+        if not success:
+            raise Exception(f"Failed to upload PPTX file to Cloudinary. Details: {result_id_or_error}")
+        
+        # The public_id we will use is what Cloudinary returns
+        pptx_public_id = result_id_or_error
+        logger.info(f"PPTX file for task {task_id} uploaded to Cloudinary with public_id: {pptx_public_id}")
+        
         video_generation_tasks[task_id]["status"] = "generating"
         
-        # Initialize the HeyGen video converter with language support
+        # 3. Initialize the HeyGen video converter with the Cloudinary storage manager
         converter = PPTXToHeyGenVideo(
+            storage_manager=cloudinary_storage_manager,
             pptx_avatar_id=talking_photo_id,
             pptx_voice_id=voice_id,
-            language=language,  # NEW: Pass language to converter
-            storage_manager=storage_manager  # NEW: Pass global storage manager
+            language=language
         )
         
-        # Convert the presentation to video (this is the long-running operation)
+        # 4. Convert the presentation to video using the Cloudinary public_id
         result = await run_in_threadpool(
             converter.convert,
-            pptx_path=temp_file_path,
+            pptx_public_id=pptx_public_id,
             title=title
         )
         
-        # Update task with results
         video_generation_tasks[task_id].update({
             "status": "completed",
             "video_id": result.get("video_id"),
@@ -1113,14 +1079,7 @@ async def generate_video_background(task_id: str, temp_file_path: str, voice_id:
             "error": str(e),
             "failed_at": datetime.now().isoformat()
         })
-    finally:
-        # Clean up temporary file
-        if os.path.exists(temp_file_path):
-            try:
-                os.unlink(temp_file_path)
-                logger.info(f"Cleaned up temporary file: {temp_file_path}")
-            except Exception as e:
-                logger.warning(f"Failed to clean up temporary file {temp_file_path}: {e}")
+    # No local file cleanup needed as we handle bytes in memory
 
 @app.get("/check_video_status/{task_id}", response_model=Dict[str, Any])
 async def check_video_status(task_id: str):
