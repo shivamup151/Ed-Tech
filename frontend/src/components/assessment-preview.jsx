@@ -433,8 +433,8 @@ export default function AssessmentPreview({
           </div>
         )}
 
-        {/* Show correct answer in review mode or preview mode - only for incorrect answers */}
-        {(isReviewMode || isPreviewMode) && correctAnswer && !isCorrect && (
+        {/* Show correct answer in review mode or preview mode */}
+        {(isReviewMode || isPreviewMode) && correctAnswer && (
           <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
             <p className="text-sm text-blue-700 dark:text-blue-400">
               <strong>Correct Answer:</strong> {correctAnswer}
