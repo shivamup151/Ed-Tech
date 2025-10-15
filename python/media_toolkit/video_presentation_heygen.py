@@ -40,6 +40,7 @@ class PPTXToHeyGenVideo:
         pptx_voice_id: Optional[str] = None,
         use_slides_as_background: bool = True,
         language: str = "english",  # NEW: Language support
+        storage_manager: Optional[Any] = None,  # NEW: Add storage manager
     ):
         self.heygen_api_key = heygen_api_key or os.getenv("HEYGEN_API_KEY")
         self.openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
@@ -53,6 +54,7 @@ class PPTXToHeyGenVideo:
         self.poll_interval_s = poll_interval_s
         self.use_slides_as_background = use_slides_as_background
         self.language = language.lower()  # NEW: Store language preference
+        self.storage_manager = storage_manager  # NEW: Store reference
         self.slide_asset_ids: List[str] = []
 
         if not self.heygen_api_key:
@@ -262,21 +264,35 @@ class PPTXToHeyGenVideo:
 
     def _upload_slide_to_r2(self, file_path: str) -> str:
         """Upload slide image to R2 storage and return public URL"""
+        file_name = os.path.basename(file_path)  # FIXED: Define outside try block
+        
         try:
-            from lib.cloudinary import upload_to_cloudinary
-            
-            file_name = os.path.basename(file_path)
             logging.info(f"Uploading {file_name} to R2 storage...")
             
-            # Upload to R2 via Cloudinary
-            result = upload_to_cloudinary(file_path, folder="heygen-slides")
+            # Read file data
+            with open(file_path, 'rb') as f:
+                file_data = f.read()
             
-            if result and result.get('secure_url'):
-                image_url = result['secure_url']
-                logging.info(f"Successfully uploaded {file_name} to R2: {image_url}")
-                return image_url
+            # Use the passed storage_manager or create a new one if not provided
+            if self.storage_manager:
+                storage = self.storage_manager
             else:
-                raise Exception(f"Failed to get URL from R2 upload: {result}")
+                from storage import CloudflareR2Storage
+                storage = CloudflareR2Storage()
+            
+            # Upload to R2 - use user_docs folder with auto-deletion after 72 hours
+            success, storage_key, public_url = storage.upload_file_and_get_url(
+                file_data, 
+                file_name, 
+                is_user_doc=True,  # Use user_docs for temporary slides
+                schedule_deletion_hours=72  # Auto-delete after 3 days
+            )
+            
+            if success and public_url:
+                logging.info(f"Successfully uploaded {file_name} to R2: {public_url}")
+                return public_url
+            else:
+                raise Exception(f"Failed to get public URL from R2 upload")
                 
         except Exception as e:
             logging.error(f"Failed to upload {file_name} to R2: {e}")

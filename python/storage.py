@@ -192,6 +192,26 @@ class CloudflareR2Storage:
         except Exception:
             return False
 
+    def get_public_url(self, key: str) -> Optional[str]:
+        """Generate public URL for R2 object"""
+        public_domain = os.getenv("R2_PUBLIC_DOMAIN")
+        if public_domain:
+            return f"{public_domain}/{key}"
+        # Fallback to default R2 dev domain
+        if self.account_id and self.bucket_name:
+            return f"https://{self.bucket_name}.{self.account_id}.r2.dev/{key}"
+        return None
+
+    def upload_file_and_get_url(self, file_data: bytes, filename: str, 
+                                is_user_doc: bool = False, 
+                                schedule_deletion_hours: int = 72) -> Tuple[bool, str, Optional[str]]:
+        """Upload file and return (success, key, public_url)"""
+        success, key = self.upload_file(file_data, filename, is_user_doc, schedule_deletion_hours)
+        if success:
+            url = self.get_public_url(key)
+            return True, key, url
+        return False, key, None
+
     def check_and_delete_expired_files(self) -> int:
         if self.use_local_fallback or not self.r2:
             return 0

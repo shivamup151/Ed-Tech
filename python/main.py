@@ -1084,7 +1084,8 @@ async def generate_video_background(task_id: str, temp_file_path: str, voice_id:
         converter = PPTXToHeyGenVideo(
             pptx_avatar_id=talking_photo_id,
             pptx_voice_id=voice_id,
-            language=language  # NEW: Pass language to converter
+            language=language,  # NEW: Pass language to converter
+            storage_manager=storage_manager  # NEW: Pass global storage manager
         )
         
         # Convert the presentation to video (this is the long-running operation)
