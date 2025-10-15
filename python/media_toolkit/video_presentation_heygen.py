@@ -237,13 +237,17 @@ class PPTXToHeyGenVideo:
             if not mime_type:
                 mime_type = "image/png"  # Default to PNG
 
-        logging.info(f"Uploading {file_name} to HeyGen (target folder: {folder_id}) with MIME type: {mime_type}...")
+        # Check if file exists and get its size
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+        
+        file_size = os.path.getsize(file_path)
+        logging.info(f"Uploading {file_name} to HeyGen (target folder: {folder_id}) with MIME type: {mime_type}, file size: {file_size} bytes...")
 
         url = "https://upload.heygen.com/v1/asset"
         
         upload_headers = {
             "X-Api-Key": self.heygen_api_key,
-            "Content-Type": mime_type,
         }
         
         # Add folder_id as query parameter if provided
@@ -254,7 +258,16 @@ class PPTXToHeyGenVideo:
             for attempt in range(3):
                 try:
                     f.seek(0)
-                    resp = requests.post(url, headers=upload_headers, data=f, timeout=self.request_timeout_s)
+                    # Use files parameter for proper file upload with Content-Type
+                    # HeyGen expects 'file' as the field name
+                    files = {'file': (file_name, f, mime_type)}
+                    
+                    # Debug: Log the request details
+                    logging.info(f"Request URL: {url}")
+                    logging.info(f"Request headers: {upload_headers}")
+                    logging.info(f"Files parameter: {list(files.keys())}")
+                    
+                    resp = requests.post(url, headers=upload_headers, files=files, timeout=self.request_timeout_s)
                     
                     # Log the response for debugging
                     if resp.status_code != 200:
@@ -365,11 +378,12 @@ class PPTXToHeyGenVideo:
                 try:
                     # Download slide as PNG image
                     image_data = slides_api.download_slide(filename, slide_index, "png")
+                    logging.info(f"Downloaded slide {slide_index} data type: {type(image_data)}, size: {len(image_data) if hasattr(image_data, '__len__') else 'unknown'}")
                     
                     # Save image to temp directory
                     slide_path = os.path.join(temp_dir, f"slide_{slide_index}.png")
                     
-                    # Handle different response formats
+                    # Handle different response formats from Aspose API
                     if isinstance(image_data, str):
                         # If it's a string, it's likely base64 encoded image data
                         import base64
@@ -383,27 +397,21 @@ class PPTXToHeyGenVideo:
                         # If it's already bytes, use as is
                         image_bytes = image_data
                     
-                    # Validate and process the image
+                    # Save the image directly without PIL processing
+                    # Aspose API should return valid PNG data
+                    with open(slide_path, 'wb') as f:
+                        f.write(image_bytes)
+                    
+                    # Validate the saved image
                     try:
                         from PIL import Image
-                        import io
-                        
-                        # Try to open the image to validate it
-                        img = Image.open(io.BytesIO(image_bytes))
-                        
-                        # Convert to RGB if necessary (HeyGen prefers RGB PNG)
-                        if img.mode != 'RGB':
-                            img = img.convert('RGB')
-                        
-                        # Save as high-quality PNG
-                        img.save(slide_path, 'PNG', optimize=True, quality=95)
-                        logging.info(f"Processed and validated slide {slide_index} image")
-                        
+                        # Try to open the saved image to verify it's valid
+                        with Image.open(slide_path) as img:
+                            # Just verify it can be opened - don't modify
+                            logging.info(f"Validated slide {slide_index} image: {img.size}, mode: {img.mode}")
                     except Exception as img_error:
-                        logging.warning(f"Image processing failed for slide {slide_index}: {img_error}")
-                        # Fallback: save raw bytes
-                        with open(slide_path, 'wb') as f:
-                            f.write(image_bytes)
+                        logging.warning(f"Image validation failed for slide {slide_index}: {img_error}")
+                        # Continue anyway - the file might still work
                     
                     slide_files.append(slide_path)
                     logging.info(f"Converted slide {slide_index} to {slide_path}")
