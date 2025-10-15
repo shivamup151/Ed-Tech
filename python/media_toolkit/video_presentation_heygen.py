@@ -272,38 +272,6 @@ class PPTXToHeyGenVideo:
         
         raise RuntimeError(f"File upload failed for {file_name} after multiple retries.")
 
-    def _upload_slide_to_cloudinary(self, file_path: str) -> str:
-        """Upload slide image to Cloudinary and return public URL"""
-        import cloudinary
-        import cloudinary.uploader
-        
-        file_name = os.path.basename(file_path)
-        
-        try:
-            # Configure Cloudinary
-            cloudinary.config(
-                cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-                api_key=os.getenv("CLOUDINARY_API_KEY"),
-                api_secret=os.getenv("CLOUDINARY_API_SECRET")
-            )
-            
-            logging.info(f"Uploading {file_name} to Cloudinary...")
-            
-            # Upload to Cloudinary
-            result = cloudinary.uploader.upload(
-                file_path,
-                folder="heygen-slides",
-                resource_type="image",
-                public_id=f"slide_{int(time.time())}_{file_name.split('.')[0]}"
-            )
-            
-            image_url = result.get('secure_url')
-            logging.info(f"Successfully uploaded {file_name} to Cloudinary: {image_url}")
-            return image_url
-            
-        except Exception as e:
-            logging.error(f"Failed to upload {file_name} to Cloudinary: {e}")
-            raise
 
     def _extract_slides_as_images_and_upload(self, pptx_path: str, prs: Presentation, folder_id: str):
         import tempfile
@@ -345,8 +313,8 @@ class PPTXToHeyGenVideo:
         if not slide_image_paths:
             raise RuntimeError("Failed to extract any slide images")
 
-        # Upload slide images to Cloudinary and get URLs
-        self.slide_image_urls = [self._upload_slide_to_cloudinary(p) for p in slide_image_paths]
+        # Upload slide images to HeyGen and get asset IDs
+        self.slide_asset_ids = [self._upload_asset_to_heygen(p, folder_id) for p in slide_image_paths]
 
 
     def _convert_with_aspose_cloud(self, pptx_path: str, temp_dir: str) -> List[str]:
@@ -484,13 +452,13 @@ class PPTXToHeyGenVideo:
                 },
             }
 
-            # FIXED: Proper background handling - ensure slides are visible
-            if self.use_slides_as_background and idx < len(self.slide_image_urls):
-                image_url = self.slide_image_urls[idx]
-                logging.info(f"Setting background for scene {idx + 1} with image_url: {image_url}")
+            # FIXED: Proper background handling - use HeyGen asset IDs
+            if self.use_slides_as_background and idx < len(self.slide_asset_ids):
+                asset_id = self.slide_asset_ids[idx]
+                logging.info(f"Setting background for scene {idx + 1} with asset_id: {asset_id}")
                 scene["background"] = {
                     "type": "image", 
-                    "url": image_url,
+                    "asset_id": asset_id,
                     "fit": "cover"
                     # No position object - let HeyGen handle the full background
                 }
@@ -620,16 +588,16 @@ class PPTXToHeyGenVideo:
             folder_name = f"Slides_{os.path.basename(pptx_path)}_{int(time.time())}"
             folder_id = self._create_heygen_folder(folder_name)
             self._extract_slides_as_images_and_upload(pptx_path, prs, folder_id)
-            if len(self.slide_image_urls) < len(slides_text):
+            if len(self.slide_asset_ids) < len(slides_text):
                 logging.warning("Number of uploaded slide assets is less than the number of slides.")
-                slides_text = slides_text[:len(self.slide_image_urls)]
+                slides_text = slides_text[:len(self.slide_asset_ids)]
 
         slide_notes = self.generate_speaker_notes(slides_text)
         
         # Debug logging
         logging.info(f"Generated {len(slide_notes)} slide notes")
         logging.info(f"Slide notes: {slide_notes}")
-        logging.info(f"Slide image URLs: {self.slide_image_urls}")
+        logging.info(f"Slide asset IDs: {self.slide_asset_ids}")
         
         final_title = title or os.path.basename(pptx_path)
         gen_info = self.create_multi_scene_video(slide_notes, title=final_title)

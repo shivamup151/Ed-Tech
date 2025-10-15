@@ -41,3 +41,4 @@ python-pptx
 arabic_reshaper 
 python-bidi
 asposeslidescloud
+cloudinary
