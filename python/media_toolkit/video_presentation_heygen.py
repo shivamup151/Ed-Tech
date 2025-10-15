@@ -226,11 +226,18 @@ class PPTXToHeyGenVideo:
 
     def _upload_asset_to_heygen(self, file_path: str, folder_id: str) -> str:
         file_name = os.path.basename(file_path)
-        mime_type, _ = mimetypes.guess_type(file_path)
-        if not mime_type:
+        
+        # Explicitly set MIME type for PNG files
+        if file_name.lower().endswith('.png'):
             mime_type = "image/png"
+        elif file_name.lower().endswith('.jpg') or file_name.lower().endswith('.jpeg'):
+            mime_type = "image/jpeg"
+        else:
+            mime_type, _ = mimetypes.guess_type(file_path)
+            if not mime_type:
+                mime_type = "image/png"  # Default to PNG
 
-        logging.info(f"Uploading {file_name} to HeyGen (target folder: {folder_id})...")
+        logging.info(f"Uploading {file_name} to HeyGen (target folder: {folder_id}) with MIME type: {mime_type}...")
 
         url = "https://upload.heygen.com/v1/asset"
         
