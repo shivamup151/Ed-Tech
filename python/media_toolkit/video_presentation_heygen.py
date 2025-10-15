@@ -272,40 +272,37 @@ class PPTXToHeyGenVideo:
         
         raise RuntimeError(f"File upload failed for {file_name} after multiple retries.")
 
-    def _upload_slide_to_r2(self, file_path: str) -> str:
-        """Upload slide image to R2 storage and return public URL"""
-        file_name = os.path.basename(file_path)  # FIXED: Define outside try block
+    def _upload_slide_to_cloudinary(self, file_path: str) -> str:
+        """Upload slide image to Cloudinary and return public URL"""
+        import cloudinary
+        import cloudinary.uploader
+        
+        file_name = os.path.basename(file_path)
         
         try:
-            logging.info(f"Uploading {file_name} to R2 storage...")
-            
-            # Read file data
-            with open(file_path, 'rb') as f:
-                file_data = f.read()
-            
-            # Use the passed storage_manager or create a new one if not provided
-            if self.storage_manager:
-                storage = self.storage_manager
-            else:
-                from storage import CloudflareR2Storage
-                storage = CloudflareR2Storage()
-            
-            # Upload to R2 - use user_docs folder with auto-deletion after 72 hours
-            success, storage_key, public_url = storage.upload_file_and_get_url(
-                file_data, 
-                file_name, 
-                is_user_doc=True,  # Use user_docs for temporary slides
-                schedule_deletion_hours=72  # Auto-delete after 3 days
+            # Configure Cloudinary
+            cloudinary.config(
+                cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+                api_key=os.getenv("CLOUDINARY_API_KEY"),
+                api_secret=os.getenv("CLOUDINARY_API_SECRET")
             )
             
-            if success and public_url:
-                logging.info(f"Successfully uploaded {file_name} to R2: {public_url}")
-                return public_url
-            else:
-                raise Exception(f"Failed to get public URL from R2 upload")
-                
+            logging.info(f"Uploading {file_name} to Cloudinary...")
+            
+            # Upload to Cloudinary
+            result = cloudinary.uploader.upload(
+                file_path,
+                folder="heygen-slides",
+                resource_type="image",
+                public_id=f"slide_{int(time.time())}_{file_name.split('.')[0]}"
+            )
+            
+            image_url = result.get('secure_url')
+            logging.info(f"Successfully uploaded {file_name} to Cloudinary: {image_url}")
+            return image_url
+            
         except Exception as e:
-            logging.error(f"Failed to upload {file_name} to R2: {e}")
+            logging.error(f"Failed to upload {file_name} to Cloudinary: {e}")
             raise
 
     def _extract_slides_as_images_and_upload(self, pptx_path: str, prs: Presentation, folder_id: str):
@@ -348,8 +345,8 @@ class PPTXToHeyGenVideo:
         if not slide_image_paths:
             raise RuntimeError("Failed to extract any slide images")
 
-        # Upload slide images to R2 storage and get URLs
-        self.slide_image_urls = [self._upload_slide_to_r2(p) for p in slide_image_paths]
+        # Upload slide images to Cloudinary and get URLs
+        self.slide_image_urls = [self._upload_slide_to_cloudinary(p) for p in slide_image_paths]
 
 
     def _convert_with_aspose_cloud(self, pptx_path: str, temp_dir: str) -> List[str]:
