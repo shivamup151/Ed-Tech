@@ -453,8 +453,10 @@ async def assessment_endpoint(schema: AssessmentSchema):
             current_prompt = schema_dict.get('user_prompt', '') or "None."
             schema_dict['user_prompt'] = f"{arabic_instruction}\n\n{current_prompt}"
             
-            # Remove field name modifications - let the LLM handle language
-            # The prompt template already instructs full Arabic generation
+            # Translate key terms to guide the LLM more effectively
+            schema_dict['test_title'] = f"عنوان الاختبار: {schema_dict['test_title']}"
+            schema_dict['topic'] = f"الموضوع: {schema_dict['topic']}"
+            schema_dict['subject'] = f"المادة: {schema_dict['subject']}"
 
         if embeddings:
             logger.info("Fetching curriculum context for the assessment...")

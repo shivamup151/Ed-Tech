@@ -226,12 +226,21 @@ class PPTXToHeyGenVideo:
             "X-Api-Key": self.heygen_api_key,
             "Content-Type": mime_type,
         }
+        
+        # Add folder_id as query parameter if provided
+        if folder_id:
+            url = f"{url}?folder_id={folder_id}"
 
         with open(file_path, 'rb') as f:
             for attempt in range(3):
                 try:
                     f.seek(0)
                     resp = requests.post(url, headers=upload_headers, data=f, timeout=self.request_timeout_s)
+                    
+                    # Log the response for debugging
+                    if resp.status_code != 200:
+                        logging.error(f"HeyGen upload failed with status {resp.status_code}: {resp.text}")
+                    
                     resp.raise_for_status()
                     
                     response_data = resp.json()
@@ -250,6 +259,28 @@ class PPTXToHeyGenVideo:
                     time.sleep(2 ** attempt)
         
         raise RuntimeError(f"File upload failed for {file_name} after multiple retries.")
+
+    def _upload_slide_to_r2(self, file_path: str) -> str:
+        """Upload slide image to R2 storage and return public URL"""
+        try:
+            from lib.cloudinary import upload_to_cloudinary
+            
+            file_name = os.path.basename(file_path)
+            logging.info(f"Uploading {file_name} to R2 storage...")
+            
+            # Upload to R2 via Cloudinary
+            result = upload_to_cloudinary(file_path, folder="heygen-slides")
+            
+            if result and result.get('secure_url'):
+                image_url = result['secure_url']
+                logging.info(f"Successfully uploaded {file_name} to R2: {image_url}")
+                return image_url
+            else:
+                raise Exception(f"Failed to get URL from R2 upload: {result}")
+                
+        except Exception as e:
+            logging.error(f"Failed to upload {file_name} to R2: {e}")
+            raise
 
     def _extract_slides_as_images_and_upload(self, pptx_path: str, prs: Presentation, folder_id: str):
         import tempfile
@@ -280,9 +311,9 @@ class PPTXToHeyGenVideo:
                 logging.info("PowerPoint COM automation completed successfully")
                 
             else:
-                # For non-Windows systems, try using LibreOffice
-                logging.info("Windows not detected, trying LibreOffice conversion...")
-                slide_image_paths = self._convert_with_libreoffice(pptx_path, temp_dir)
+                # For non-Windows systems, use Aspose Cloud API
+                logging.info("Windows not detected, using Aspose Cloud API for conversion...")
+                slide_image_paths = self._convert_with_aspose_cloud(pptx_path, temp_dir)
                 
         except Exception as e:
             logging.error(f"Slide export failed: {e}")
@@ -291,48 +322,116 @@ class PPTXToHeyGenVideo:
         if not slide_image_paths:
             raise RuntimeError("Failed to extract any slide images")
 
-        self.slide_asset_ids = [self._upload_asset_to_heygen(p, folder_id) for p in slide_image_paths]
+        # Upload slide images to R2 storage and get URLs
+        self.slide_image_urls = [self._upload_slide_to_r2(p) for p in slide_image_paths]
 
-    def _convert_with_libreoffice(self, pptx_path: str, temp_dir: str) -> List[str]:
-        """Convert PowerPoint to images using LibreOffice"""
+
+    def _convert_with_aspose_cloud(self, pptx_path: str, temp_dir: str) -> List[str]:
+        """Convert PowerPoint to images using Aspose Cloud API (no watermarks)"""
         try:
-            import subprocess
-            import os
+            import asposeslidescloud
+            from asposeslidescloud.configuration import Configuration
+            from asposeslidescloud.apis.slides_api import SlidesApi
+            import uuid
             
-            # Convert PPTX to PDF first
-            pdf_path = os.path.join(temp_dir, "presentation.pdf")
-            cmd = [
-                "libreoffice", "--headless", "--convert-to", "pdf", 
-                "--outdir", temp_dir, pptx_path
-            ]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            # Configure API credentials
+            configuration = Configuration()
+            configuration.app_sid = os.getenv("ASPOSE_CLIENT_ID")
+            configuration.app_key = os.getenv("ASPOSE_CLIENT_SECRET")
+            slides_api = SlidesApi(configuration)
             
-            if result.returncode != 0:
-                raise Exception(f"LibreOffice conversion failed: {result.stderr}")
+            if not configuration.app_sid or not configuration.app_key:
+                raise Exception("ASPOSE_CLIENT_ID and ASPOSE_CLIENT_SECRET environment variables are required")
             
-            # Convert PDF to images using ImageMagick
-            cmd = [
-                "convert", "-density", "300", "-quality", "100",
-                pdf_path, os.path.join(temp_dir, "slide_%d.png")
-            ]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            logging.info("Using Aspose Cloud API for slide conversion...")
             
-            if result.returncode != 0:
-                raise Exception(f"ImageMagick conversion failed: {result.stderr}")
+            # Generate unique filename for upload
+            filename = f"presentation_{uuid.uuid4().hex}.pptx"
             
-            # Find generated PNG files
+            # Upload the presentation - read file data first
+            with open(pptx_path, 'rb') as f:
+                file_data = f.read()
+            
+            upload_result = slides_api.upload_file(filename, file_data)
+            logging.info(f"Uploaded presentation: {filename}")
+            
+            # Get presentation info to know slide count
+            presentation_info = slides_api.get_slides(filename)
+            slide_count = len(presentation_info.slide_list)
+            logging.info(f"Found {slide_count} slides in presentation")
+            
             slide_files = []
-            for i in range(1, 100):  # Assume max 100 slides
-                slide_path = os.path.join(temp_dir, f"slide_{i}.png")
-                if os.path.exists(slide_path):
-                    slide_files.append(slide_path)
-                else:
-                    break
             
+            # Download each slide as PNG
+            for slide_index in range(1, slide_count + 1):
+                try:
+                    # Download slide as PNG image
+                    image_data = slides_api.download_slide(filename, slide_index, "png")
+                    
+                    # Save image to temp directory
+                    slide_path = os.path.join(temp_dir, f"slide_{slide_index}.png")
+                    
+                    # Handle different response formats
+                    if isinstance(image_data, str):
+                        # If it's a string, it's likely base64 encoded image data
+                        import base64
+                        try:
+                            # Try to decode as base64
+                            image_bytes = base64.b64decode(image_data)
+                        except:
+                            # If not base64, treat as raw string
+                            image_bytes = image_data.encode('utf-8')
+                    else:
+                        # If it's already bytes, use as is
+                        image_bytes = image_data
+                    
+                    # Validate and process the image
+                    try:
+                        from PIL import Image
+                        import io
+                        
+                        # Try to open the image to validate it
+                        img = Image.open(io.BytesIO(image_bytes))
+                        
+                        # Convert to RGB if necessary (HeyGen prefers RGB PNG)
+                        if img.mode != 'RGB':
+                            img = img.convert('RGB')
+                        
+                        # Save as high-quality PNG
+                        img.save(slide_path, 'PNG', optimize=True, quality=95)
+                        logging.info(f"Processed and validated slide {slide_index} image")
+                        
+                    except Exception as img_error:
+                        logging.warning(f"Image processing failed for slide {slide_index}: {img_error}")
+                        # Fallback: save raw bytes
+                        with open(slide_path, 'wb') as f:
+                            f.write(image_bytes)
+                    
+                    slide_files.append(slide_path)
+                    logging.info(f"Converted slide {slide_index} to {slide_path}")
+                    
+                except Exception as e:
+                    logging.warning(f"Failed to convert slide {slide_index}: {e}")
+                    continue
+            
+            # Clean up uploaded file
+            try:
+                slides_api.delete_file(filename)
+                logging.info(f"Cleaned up uploaded file: {filename}")
+            except:
+                pass  # Ignore cleanup errors
+            
+            if not slide_files:
+                raise Exception("No slides were successfully converted")
+            
+            logging.info(f"Successfully converted {len(slide_files)} slides using Aspose Cloud API")
             return slide_files
             
+        except ImportError:
+            logging.error("asposeslidescloud not installed. Please install with: pip install asposeslidescloud")
+            return []
         except Exception as e:
-            logging.warning(f"LibreOffice conversion failed: {e}")
+            logging.warning(f"Aspose Cloud API conversion failed: {e}")
             return []
 
     def _build_video_inputs(self, slide_notes: List[str]) -> List[Dict]:
@@ -363,12 +462,13 @@ class PPTXToHeyGenVideo:
             }
 
             # FIXED: Proper background handling - ensure slides are visible
-            if self.use_slides_as_background and idx < len(self.slide_asset_ids):
-                asset_id = self.slide_asset_ids[idx]
-                logging.info(f"Setting background for scene {idx + 1} with asset_id: {asset_id}")
+            if self.use_slides_as_background and idx < len(self.slide_image_urls):
+                image_url = self.slide_image_urls[idx]
+                logging.info(f"Setting background for scene {idx + 1} with image_url: {image_url}")
                 scene["background"] = {
                     "type": "image", 
-                    "image_asset_id": asset_id
+                    "url": image_url,
+                    "fit": "cover"
                     # No position object - let HeyGen handle the full background
                 }
             else:
