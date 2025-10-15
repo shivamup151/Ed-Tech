@@ -56,6 +56,7 @@ class PPTXToHeyGenVideo:
         self.language = language.lower()  # NEW: Store language preference
         self.storage_manager = storage_manager  # NEW: Store reference
         self.slide_asset_ids: List[str] = []
+        self.slide_image_urls: List[str] = []  # NEW: Store R2 slide image URLs
 
         if not self.heygen_api_key:
             raise ValueError("Missing HEYGEN_API_KEY")
@@ -81,7 +82,16 @@ class PPTXToHeyGenVideo:
                 resp.raise_for_status()
                 return resp
             except requests.RequestException as e:
-                logging.warning(f"POST attempt {attempt + 1} failed: {e}")
+                # Log the response content for debugging
+                if hasattr(e, 'response') and e.response is not None:
+                    try:
+                        error_content = e.response.text
+                        logging.warning(f"POST attempt {attempt + 1} failed: {e}")
+                        logging.warning(f"Response content: {error_content}")
+                    except:
+                        logging.warning(f"POST attempt {attempt + 1} failed: {e}")
+                else:
+                    logging.warning(f"POST attempt {attempt + 1} failed: {e}")
                 if attempt == 2:
                     raise
                 time.sleep(2 ** attempt)
@@ -613,11 +623,16 @@ class PPTXToHeyGenVideo:
             folder_name = f"Slides_{os.path.basename(pptx_path)}_{int(time.time())}"
             folder_id = self._create_heygen_folder(folder_name)
             self._extract_slides_as_images_and_upload(pptx_path, prs, folder_id)
-            if len(self.slide_asset_ids) < len(slides_text):
+            if len(self.slide_image_urls) < len(slides_text):
                 logging.warning("Number of uploaded slide assets is less than the number of slides.")
-                slides_text = slides_text[:len(self.slide_asset_ids)]
+                slides_text = slides_text[:len(self.slide_image_urls)]
 
         slide_notes = self.generate_speaker_notes(slides_text)
+        
+        # Debug logging
+        logging.info(f"Generated {len(slide_notes)} slide notes")
+        logging.info(f"Slide notes: {slide_notes}")
+        logging.info(f"Slide image URLs: {self.slide_image_urls}")
         
         final_title = title or os.path.basename(pptx_path)
         gen_info = self.create_multi_scene_video(slide_notes, title=final_title)
