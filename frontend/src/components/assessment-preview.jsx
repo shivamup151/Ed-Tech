@@ -18,11 +18,14 @@ export default function AssessmentPreview({
   onEditAssessment, 
   isEditable = true,
   isPreviewMode = false,
-  isReviewMode = false 
+  isReviewMode = false,
+  studentAnswers = {}, // Add student answers prop
+  evaluationResults = {} // Add evaluation results prop
 }) {
   const [copied, setCopied] = useState(false);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
   const [downloadFormat, setDownloadFormat] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
@@ -41,10 +44,6 @@ export default function AssessmentPreview({
     let currentQuestion = null;
     let inSolutionsSection = false;
 
-    // Debug logging
-    console.log('=== PARSING ASSESSMENT CONTENT ===');
-    console.log('Content length:', content.length);
-    console.log('First 500 chars:', content.substring(0, 500));
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -150,9 +149,6 @@ export default function AssessmentPreview({
       }
     });
 
-    // Debug logging
-    console.log('Parsed questions:', questions);
-    console.log('Parsed solutions:', solutions);
 
     return { questions, solutions };
   };
@@ -170,21 +166,19 @@ export default function AssessmentPreview({
   // In review mode, load the submitted answers
   useEffect(() => {
     if (isReviewMode) {
-      // Check if student answers are passed as prop
-      if (assessment.submittedAnswers) {
+      // Check if student answers are passed as prop (priority order)
+      if (studentAnswers && Object.keys(studentAnswers).length > 0) {
+        setAnswers(studentAnswers);
+        setSubmitted(true);
+      } else if (assessment.submittedAnswers) {
         setAnswers(assessment.submittedAnswers);
         setSubmitted(true);
       } else if (assessment.studentAnswers) {
         setAnswers(assessment.studentAnswers);
         setSubmitted(true);
-      } else {
-        // For testing - you can add sample answers here
-        console.log('No student answers found. Add sample answers for testing.');
-        // Uncomment the line below to add sample answers for testing:
-        // setAnswers({0: 2, 1: 1, 2: 2, 3: 2, 4: 1, 5: 2, 6: 1, 7: 2, 8: 1, 9: 3});
       }
     }
-  }, [isReviewMode, assessment?.submittedAnswers, assessment?.studentAnswers]);
+  }, [isReviewMode, studentAnswers, assessment?.submittedAnswers, assessment?.studentAnswers]);
 
   const handleCopyContent = async () => {
     try {
@@ -267,10 +261,21 @@ export default function AssessmentPreview({
   }
 
   const renderQuestion = (question, index) => {
-    const studentAnswer = answers[index];
+    // Use studentAnswers prop if available, otherwise fall back to local answers state
+    const studentAnswer = studentAnswers[question.number] || answers[question.number] || answers[index];
     const correctAnswer = question.correctAnswer;
-    const isCorrect = studentAnswer !== undefined && correctAnswer !== undefined && 
-                     studentAnswer.toString().toLowerCase() === correctAnswer.toLowerCase();
+    
+    // Use saved evaluation results if available, otherwise fall back to basic comparison
+    let isCorrect = false;
+    if (evaluationResults[question.number]) {
+      // Use the saved evaluation result from submission
+      isCorrect = evaluationResults[question.number].isCorrect;
+    } else {
+      // Fallback to basic comparison (for backward compatibility)
+      isCorrect = studentAnswer !== undefined && correctAnswer !== undefined && 
+        studentAnswer.toString().toLowerCase() === correctAnswer.toLowerCase();
+    }
+
 
     return (
       <div key={index} className="border rounded-lg p-4 mb-4">
@@ -278,16 +283,38 @@ export default function AssessmentPreview({
           <h3 className="font-medium text-base">
             Question {question.number}: {question.text}
           </h3>
-          {isReviewMode && correctAnswer && (
+          {isReviewMode && correctAnswer && isCorrect && (
             <div className="flex items-center gap-1 ml-2">
-              {isCorrect ? (
-                <CheckCircle className="h-5 w-5 text-green-600" />
-              ) : (
-                <XCircle className="h-5 w-5 text-red-600" />
-              )}
+              <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
           )}
         </div>
+        
+        {/* Show student answer if available */}
+        {isReviewMode && (
+          <>
+            {studentAnswer !== undefined && studentAnswer !== null && studentAnswer !== '' ? (
+              <div className={`p-3 rounded-lg border-2 mb-3 ${
+                isCorrect 
+                  ? 'bg-green-50 border-green-500 text-green-900' 
+                  : 'bg-red-50 border-red-500 text-red-900'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {isCorrect && (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  )}
+                  <span className="font-medium">Your Answer: {studentAnswer}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-lg border-2 mb-3 bg-gray-50 border-gray-300 text-gray-600">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">No answer provided</span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
         
         {question.type === 'multiple_choice' && question.options && question.options.length > 0 && (
           <div className="space-y-2">
@@ -406,34 +433,8 @@ export default function AssessmentPreview({
           </div>
         )}
 
-        {/* Show student answer result in review mode */}
-        {isReviewMode && studentAnswer !== undefined && (
-          <div className="mt-4">
-            <div className={`p-3 border rounded ${
-              isCorrect 
-                ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800' 
-                : 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
-            }`}>
-              <div className="flex items-center gap-2">
-                {isCorrect ? (
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                ) : (
-                  <XCircle className="h-4 w-4 text-red-600" />
-                )}
-                <p className={`text-sm font-medium ${
-                  isCorrect 
-                    ? 'text-green-700 dark:text-green-400' 
-                    : 'text-red-700 dark:text-red-400'
-                }`}>
-                  {isCorrect ? 'Correct' : 'Incorrect'}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Show correct answer in review mode or preview mode */}
-        {(isReviewMode || isPreviewMode) && correctAnswer && (
+        {/* Show correct answer in review mode or preview mode - only for incorrect answers */}
+        {(isReviewMode || isPreviewMode) && correctAnswer && !isCorrect && (
           <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
             <p className="text-sm text-blue-700 dark:text-blue-400">
               <strong>Correct Answer:</strong> {correctAnswer}
@@ -522,26 +523,6 @@ export default function AssessmentPreview({
           <div className="space-y-6">
             {questions.map((question, index) => renderQuestion(question, index))}
             
-            {/* Show solutions section if available and in review mode or preview mode */}
-            {(isReviewMode || isPreviewMode) && solutions && solutions.length > 0 && (
-              <div className="mt-8 border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400">
-                    Solutions
-                  </h3>
-                </div>
-                
-                <div className="space-y-3">
-                  {solutions.map((solution, index) => (
-                    <div key={index} className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
-                      <p className="text-sm text-blue-700 dark:text-blue-400">
-                        {solution}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         ) : (
           /* Fallback: Show raw content if no questions parsed */

@@ -36,11 +36,12 @@ const serializeProgressData = (items) => {
     completionData: item.completionData ? {
       completedAt: item.completionData.completedAt ? item.completionData.completedAt.toISOString() : null,
       score: item.completionData.score,
-      answers: item.completionData.answers || [],
+      answers: item.completionData.answers || {},
       correctAnswers: item.completionData.correctAnswers || 0,
       totalQuestions: item.completionData.totalQuestions || 0,
       timeToComplete: item.completionData.timeToComplete || 0,
-      feedback: item.completionData.feedback
+      feedback: item.completionData.feedback,
+      evaluationResults: item.completionData.evaluationResults || {}
     } : null,
     metadata: {
       createdAt: item.metadata?.createdAt ? item.metadata.createdAt.toISOString() : null,

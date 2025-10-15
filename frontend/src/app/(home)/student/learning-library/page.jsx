@@ -206,6 +206,7 @@ const LearningLibrary = () => {
       setIsReviewDialogOpen(false)
       setSelectedResource(null)
       
+      
       setCurrentResource(content)
       setIsLearningDialogOpen(true)
     } catch (error) {
@@ -652,20 +653,30 @@ const LearningLibrary = () => {
       </div>
 
       {/* Learning Dialog - Only for non-completed content */}
+      {currentResource && (
       <LearningDialog
+          key={currentResource._id}
         isOpen={isLearningDialogOpen}
         onClose={handleCloseLearning}
         content={currentResource}
         onComplete={handleCompleteLearning}
+        studentProgress={currentResource}
       />
+      )}
 
       {/* Review Dialog for completed content */}
+      {selectedResource && (
       <LibraryDialog
+          key={`review-${selectedResource._id}`}
         isOpen={isReviewDialogOpen}
         onClose={() => setIsReviewDialogOpen(false)}
         content={selectedResource}
         isReviewMode={true}
+        studentAnswers={selectedResource?.progress?.completionData?.answers || {}}
+        evaluationResults={selectedResource?.progress?.completionData?.evaluationResults || {}}
       />
+      )}
+      
     </div>
   )
 }

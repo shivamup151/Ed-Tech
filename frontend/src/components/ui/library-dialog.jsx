@@ -64,9 +64,12 @@ export default function LibraryDialog({
   content, 
   onDelete, 
   onDownload,
-  isReviewMode = false
+  isReviewMode = false,
+  studentAnswers = {}, // Add student answers prop
+  evaluationResults = {} // Add evaluation results prop
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
 
   // Make sure the component always returns a consistent structure
   if (!content) {
@@ -218,21 +221,50 @@ export default function LibraryDialog({
           assessmentContent: content.assessmentContent || content.content || content.generatedContent || content.instruction || ''
         };
         
+        
         return (
           <div className="h-full overflow-hidden">
             <AssessmentPreview
               assessment={assessmentData}
               isEditable={false}
               isReviewMode={isReviewMode}
+              studentAnswers={studentAnswers}
+              evaluationResults={evaluationResults}
             />
           </div>
         );
       
       case 'worksheet':
       case 'quiz':
-        // Handle worksheet and quiz as traditional content with markdown rendering
+        // Check if this worksheet/quiz has assessment content and should be rendered as assessment
         const worksheetQuizContent = content.content || content.generatedContent || content.assessmentContent || content.instruction || '';
         
+        // If it has assessment content and we're in review mode with student answers, treat as assessment
+        if (isReviewMode && studentAnswers && Object.keys(studentAnswers).length > 0 && 
+            (worksheetQuizContent.includes('**Questions**') || worksheetQuizContent.includes('**Solutions**') || 
+             worksheetQuizContent.includes('Question') || worksheetQuizContent.includes('Answer'))) {
+          
+          
+          const assessmentData = {
+            ...content,
+            content: worksheetQuizContent,
+            assessmentContent: worksheetQuizContent
+          };
+          
+          return (
+            <div className="h-full overflow-hidden">
+              <AssessmentPreview
+                assessment={assessmentData}
+                isEditable={false}
+                isReviewMode={isReviewMode}
+                studentAnswers={studentAnswers}
+                evaluationResults={evaluationResults}
+              />
+            </div>
+          );
+        }
+        
+        // Otherwise render as traditional content
         return (
           <div className="h-full overflow-hidden">
             <div className="h-full overflow-auto p-4">

@@ -527,8 +527,9 @@ You are an expert AI instructional designer and a world-class {subject} teacher.
     - Mathematical symbols and notation
     - Equation formatting and structure
     - Any mathematical terminology
+    - **CRITICAL ALIGNMENT:** For Arabic mathematical expressions, you MUST format them with right-to-left alignment using HTML/CSS direction attributes or Unicode directional formatting to ensure proper display. Use `dir="rtl"` or Unicode RTL marks when presenting Arabic equations.
 
-    For example, if a teacher asks "حل المعادلة 2x + 5 = 15" (Solve the equation 2x + 5 = 15), your response must be entirely in Arabic and show the mathematical expression as "٢x + ٥ = ١٥" using Arabic numerals. 
+    For example, if a teacher asks "حل المعادلة 2x + 5 = 15" (Solve the equation 2x + 5 = 15), your response must be entirely in Arabic and show the mathematical expression as "٢x + ٥ = ١٥" using Arabic numerals with proper right-to-left alignment formatting. 
 
 **Output Structure and Generation Mandates:**
 You MUST structure your output according to the requested "{content_type}". Adherence to this structure is mandatory, and every section must contain **complete, fully written lengthy content**.
@@ -630,6 +631,7 @@ Please adhere to the following specifications:
     - Mathematical symbols and notation
     - Equation formatting and structure
     - Any mathematical terminology
+    - **CRITICAL ALIGNMENT:** For Arabic mathematical expressions, you MUST format them with right-to-left alignment using HTML/CSS direction attributes or Unicode directional formatting to ensure proper display. Use `dir="rtl"` or Unicode RTL marks when presenting Arabic equations.
 **EXAMPLE OUTPUT FORMAT:**
 
 1. What was the primary cause of the American Revolution?

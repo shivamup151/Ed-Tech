@@ -49,6 +49,76 @@ const contentTypes = {
   websearch: { label: "Web Search", icon: Search, color: "bg-indigo-100" }
 };
 
+// Sanitize evaluation results to remove large unnecessary data before saving to DB
+const sanitizeEvaluationResults = (results) => {
+  const sanitized = {};
+  Object.keys(results).forEach(key => {
+    sanitized[key] = {
+      isCorrect: results[key].isCorrect,
+      evaluationDetails: {
+        method: results[key].evaluationDetails?.method,
+        explanation: results[key].evaluationDetails?.explanation,
+        fallback: results[key].evaluationDetails?.fallback
+      }
+      // Exclude correctAnswer, studentAnswer, and comparedValues to reduce size
+    };
+  });
+  return sanitized;
+};
+
+// Smart string comparison function for fallback evaluation
+const smartStringComparison = (studentAnswer, correctAnswer) => {
+  if (!studentAnswer || !correctAnswer) return false;
+  
+  // Normalize both answers
+  const normalize = (text) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s]/g, '') // Remove punctuation
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+  };
+  
+  const studentNormalized = normalize(studentAnswer);
+  const correctNormalized = normalize(correctAnswer);
+  
+  // Exact match
+  if (studentNormalized === correctNormalized) {
+    return true;
+  }
+  
+  // Check if student answer contains all key words from correct answer
+  const correctWords = correctNormalized.split(' ').filter(word => word.length > 2);
+  const studentWords = studentNormalized.split(' ');
+  
+  if (correctWords.length > 0) {
+    const matchingWords = correctWords.filter(word => 
+      studentWords.some(studentWord => 
+        studentWord.includes(word) || word.includes(studentWord)
+      )
+    );
+    
+    // If 80% or more of key words match, consider it correct
+    const matchPercentage = matchingWords.length / correctWords.length;
+    if (matchPercentage >= 0.8) {
+      return true;
+    }
+  }
+  
+  // Check if correct answer contains student answer (for partial answers)
+  if (correctNormalized.includes(studentNormalized) && studentNormalized.length > 3) {
+    return true;
+  }
+  
+  // Check if student answer contains correct answer (for more detailed answers)
+  if (studentNormalized.includes(correctNormalized) && correctNormalized.length > 3) {
+    return true;
+  }
+  
+  return false;
+};
+
 // Add this new interactive assessment component
 const InteractiveAssessment = ({ assessment, onAnswerChange, studentAnswers, onSubmit, hideSolutions = true }) => {
   // Parse assessment content to separate questions and solutions
@@ -308,50 +378,91 @@ const InteractiveAssessment = ({ assessment, onAnswerChange, studentAnswers, onS
 
     let correctAnswers = 0;
     const totalQuestions = questions.length;
+    const evaluationResults = {}; // Store evaluation results for each question
 
     console.log('Submitting assessment with answers:', studentAnswers);
 
-    questions.forEach((question, index) => {
+    // Process each question and evaluate answers
+    for (const question of questions) {
       const studentAnswer = studentAnswers[question.number];
       const solutionLine = solutions.find(s => s.startsWith(`${question.number}.`));
       
-      console.log(`Question ${question.number}:`, { studentAnswer, solutionLine });
 
       if (!solutionLine) {
         console.warn(`No solution found for question ${question.number}`);
-        return;
+        continue;
       }
 
       const correctAnswer = solutionLine.replace(/^\d+\.\s*/, '').trim();
       let isCorrect = false;
+      let evaluationDetails = null;
 
       if (question.type === 'mcq') {
         // For MCQ, compare the selected option
         isCorrect = studentAnswer === correctAnswer;
+        evaluationDetails = { method: 'exact_match' };
       } else if (question.type === 'true_false') {
         // For True/False, compare the boolean value
         isCorrect = studentAnswer && studentAnswer.toLowerCase() === correctAnswer.toLowerCase();
+        evaluationDetails = { method: 'exact_match' };
       } else if (question.type === 'short_answer') {
-        // For short answer, do a more flexible comparison
-        const studentLower = (studentAnswer || '').toLowerCase().trim();
-        const correctLower = correctAnswer.toLowerCase().trim();
-        isCorrect = studentLower === correctLower || correctLower.includes(studentLower);
+        // For short answer, use semantic evaluation API
+        try {
+          const response = await fetch('/api/student/evaluate-answer', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              question: question.text,
+              correctAnswer: correctAnswer,
+              studentAnswer: studentAnswer || '',
+              language: 'English' // Could be dynamic based on content language
+            }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            isCorrect = result.isCorrect;
+            evaluationDetails = { 
+              method: 'semantic_evaluation', 
+              explanation: result.explanation,
+              fallback: result.fallback || false
+            };
+          } else {
+            console.warn(`API evaluation failed for question ${question.number}, falling back to string comparison`);
+            // Fallback to smart string comparison
+            isCorrect = smartStringComparison(studentAnswer || '', correctAnswer);
+            evaluationDetails = { method: 'fallback_string_match' };
+          }
+        } catch (error) {
+          console.error(`Error evaluating question ${question.number}:`, error);
+          // Fallback to smart string comparison
+          isCorrect = smartStringComparison(studentAnswer || '', correctAnswer);
+          evaluationDetails = { method: 'fallback_string_match', error: error.message };
+        }
       }
      
-      console.log(`Question ${question.number} result:`, { isCorrect, studentAnswer, correctAnswer });
+      // Store evaluation result for this question
+      evaluationResults[question.number] = {
+        isCorrect,
+        correctAnswer,
+        studentAnswer,
+        evaluationDetails
+      };
+     
       
       if (isCorrect) {
         correctAnswers++;
       }
-    });
+    }
 
     const score = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
     
-    console.log('Final score:', { score, correctAnswers, totalQuestions });
     
     // Call the parent's onSubmit function with the calculated score
     if (onSubmit) {
-      await onSubmit(score, correctAnswers, totalQuestions, studentAnswers);
+      await onSubmit(score, correctAnswers, totalQuestions, studentAnswers, evaluationResults);
     }
   };
 
@@ -536,7 +647,7 @@ const InteractiveAssessment = ({ assessment, onAnswerChange, studentAnswers, onS
 };
 
 // Add this new component before the InteractiveAssessment component
-const AssessmentReview = ({ assessment, studentAnswers, score, correctAnswers, totalQuestions, onClose }) => {
+const AssessmentReview = ({ assessment, studentAnswers, score, correctAnswers, totalQuestions, evaluationResults = {}, onClose }) => {
   // Parse assessment content to separate questions and solutions
   const parseAssessmentContent = (content) => {
     if (!content) return { questions: [], solutions: [] };
@@ -621,22 +732,59 @@ const AssessmentReview = ({ assessment, studentAnswers, score, correctAnswers, t
   };
 
   const { questions, solutions } = parseAssessmentContent(assessment?.content || assessment?.generatedContent || assessment?.assessmentContent);
+  
+  // Debug logging for AssessmentReview component
+  console.log('AssessmentReview initialized with:', {
+    assessment: assessment?.title || 'No title',
+    studentAnswers,
+    score,
+    correctAnswers,
+    totalQuestions,
+    evaluationResults,
+    questionsCount: questions.length,
+    solutionsCount: solutions.length,
+    hasStudentAnswers: Object.keys(studentAnswers).length > 0,
+    studentAnswersKeys: Object.keys(studentAnswers)
+  });
 
   const renderQuestionReview = (question, index) => {
     const studentAnswer = studentAnswers[question.number] || '';
     const solutionLine = solutions.find(s => s.startsWith(`${question.number}.`));
     const correctAnswer = solutionLine ? solutionLine.replace(/^\d+\.\s*/, '').trim() : '';
     
-    // Determine if the answer is correct
+    // Debug logging
+    console.log(`Review - Question ${question.number}:`, {
+      studentAnswer,
+      correctAnswer,
+      studentAnswers,
+      evaluationResults: evaluationResults[question.number],
+      questionType: question.type,
+      hasStudentAnswer: !!studentAnswer,
+      studentAnswerLength: studentAnswer?.length || 0
+    });
+    
+    // Use stored evaluation results if available, otherwise fall back to basic comparison
     let isCorrect = false;
-    if (question.type === 'mcq') {
-      isCorrect = studentAnswer === correctAnswer;
-    } else if (question.type === 'true_false') {
-      isCorrect = studentAnswer && studentAnswer.toLowerCase() === correctAnswer.toLowerCase();
-    } else if (question.type === 'short_answer') {
-      const studentLower = (studentAnswer || '').toLowerCase().trim();
-      const correctLower = correctAnswer.toLowerCase().trim();
-      isCorrect = studentLower === correctLower || correctLower.includes(studentLower);
+    let evaluationDetails = null;
+    
+    if (evaluationResults[question.number]) {
+      // Use the stored evaluation result from submission
+      isCorrect = evaluationResults[question.number].isCorrect;
+      evaluationDetails = evaluationResults[question.number].evaluationDetails;
+    } else {
+      // Fallback to basic comparison (for backward compatibility)
+      if (question.type === 'mcq') {
+        isCorrect = studentAnswer === correctAnswer;
+        evaluationDetails = { method: 'exact_match_fallback' };
+      } else if (question.type === 'true_false') {
+        isCorrect = studentAnswer && studentAnswer.toLowerCase() === correctAnswer.toLowerCase();
+        evaluationDetails = { method: 'exact_match_fallback' };
+      } else if (question.type === 'short_answer') {
+        const studentLower = (studentAnswer || '').toLowerCase().trim();
+        const correctLower = correctAnswer.toLowerCase().trim();
+        isCorrect = studentLower === correctLower || correctLower.includes(studentLower);
+        evaluationDetails = { method: 'string_match_fallback' };
+      }
     }
 
     return (
@@ -669,18 +817,26 @@ const AssessmentReview = ({ assessment, studentAnswers, score, correctAnswers, t
             {/* Show student's answer */}
             <div className="mb-3">
               <p className="text-sm font-medium text-foreground mb-1">Your Answer:</p>
-              <div className={`p-3 rounded-md ${
-                isCorrect ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200'
+              <div className={`p-4 rounded-lg border-2 font-medium flex items-center gap-3 ${
+                isCorrect 
+                  ? 'bg-green-50 dark:bg-green-900/30 border-green-500 text-green-900 dark:text-green-100' 
+                  : 'bg-red-50 dark:bg-red-900/30 border-red-500 text-red-900 dark:text-red-100'
               }`}>
-                {studentAnswer || 'No answer provided'}
+                {isCorrect ? (
+                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                ) : (
+                  <X className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                )}
+                <span>{studentAnswer || <span className="text-gray-500 italic">No answer provided</span>}</span>
               </div>
             </div>
 
             {/* Show correct answer */}
             <div className="mb-3">
               <p className="text-sm font-medium text-foreground mb-1">Correct Answer:</p>
-              <div className="p-3 rounded-md bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200">
-                {correctAnswer}
+              <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 font-medium flex items-center gap-3">
+                <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <span>{correctAnswer}</span>
               </div>
             </div>
 
@@ -904,6 +1060,7 @@ export default function StartLearning({
   const [assessmentScore, setAssessmentScore] = useState(null);
   const [showScore, setShowScore] = useState(false);
   const [assessmentResults, setAssessmentResults] = useState(null);
+  const [showReview, setShowReview] = useState(false);
   const [startTime, setStartTime] = useState(Date.now());
   const [isCompleted, setIsCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -926,12 +1083,30 @@ export default function StartLearning({
       
       setIsCompleted(isContentCompleted);
       
-      if (studentProgress) {
+      if (studentProgress && studentProgress.progress) {
         setProgress(studentProgress.progress);
         setCurrentStep(studentProgress.progress.currentStep);
+        
+        // Load stored answers for completed assessments
+        if (isContentCompleted && studentProgress.completionData?.answers) {
+          console.log('Loading stored answers for review:', studentProgress.completionData.answers);
+          setStudentAnswers(studentProgress.completionData.answers);
+          
+          // Set assessment results for review
+          if (studentProgress.completionData.score !== undefined) {
+            setAssessmentResults({
+              score: studentProgress.completionData.score,
+              correctAnswers: studentProgress.completionData.correctAnswers || 0,
+              totalQuestions: studentProgress.completionData.totalQuestions || 0,
+              answers: studentProgress.completionData.answers || {},
+              evaluationResults: studentProgress.completionData.evaluationResults || {}
+            });
+            setShowScore(true);
+          }
+        }
       } else if (content.progress) {
         setProgress(content.progress);
-        setCurrentStep(content.progress.currentStep || 0);
+        setCurrentStep(content.progress?.currentStep || 0);
       }
     }
   }, [content, isOpen, studentProgress, contentId, contentType]);
@@ -1076,9 +1251,10 @@ export default function StartLearning({
     }));
   };
 
-  const handleAssessmentSubmit = async (score, correctAnswers, totalQuestions, answers) => {
+  const handleAssessmentSubmit = async (score, correctAnswers, totalQuestions, answers, evaluationResults = {}) => {
+    
     setAssessmentScore(score);
-    setAssessmentResults({ score, correctAnswers, totalQuestions, answers });
+    setAssessmentResults({ score, correctAnswers, totalQuestions, answers, evaluationResults });
     setShowScore(true);
     setIsCompleted(true);
 
@@ -1096,7 +1272,8 @@ export default function StartLearning({
         score: score,
         correctAnswers: correctAnswers,
         totalQuestions: totalQuestions,
-        answers: answers ? JSON.parse(JSON.stringify(answers)) : {} // Deep clone to ensure serializability
+        answers: answers ? JSON.parse(JSON.stringify(answers)) : {}, // Deep clone to ensure serializability
+        evaluationResults: evaluationResults ? sanitizeEvaluationResults(evaluationResults) : {} // Store sanitized evaluation results
       };
 
       // Use the action.js function directly instead of API call
@@ -1110,7 +1287,8 @@ export default function StartLearning({
       // Close dialog after showing score for a few seconds
       setTimeout(() => {
         onClose();
-        onComplete && onComplete({ score, correctAnswers, totalQuestions });
+        // Don't call onComplete here since we already saved progress above
+        // onComplete && onComplete({ score, correctAnswers, totalQuestions });
       }, 3000);
 
     } catch (error) {
@@ -1120,6 +1298,35 @@ export default function StartLearning({
   };
 
   const renderContentPreview = () => {
+    // Show review screen for completed assessments
+    if (content.resourceType === 'assessment' && showScore && assessmentResults && showReview) {
+      return (
+        <div className="h-full flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b">
+            <h3 className="text-lg font-semibold">Assessment Review</h3>
+            <Button 
+              onClick={() => setShowReview(false)} 
+              variant="outline" 
+              size="sm"
+            >
+              Back to Score
+            </Button>
+          </div>
+          <div className="flex-1 overflow-auto p-4">
+            <AssessmentReview
+              assessment={content}
+              studentAnswers={assessmentResults.answers || {}}
+              score={assessmentResults.score}
+              correctAnswers={assessmentResults.correctAnswers}
+              totalQuestions={assessmentResults.totalQuestions}
+              evaluationResults={assessmentResults.evaluationResults || {}}
+              onClose={() => setShowReview(false)}
+            />
+          </div>
+        </div>
+      );
+    }
+
     // Show score screen for completed assessments
     if (content.resourceType === 'assessment' && showScore && assessmentResults) {
       return (
@@ -1149,9 +1356,18 @@ export default function StartLearning({
               <Badge variant="outline">{content.difficulty}</Badge>
             </div>
           </div>
-          <Button onClick={onClose} variant="outline" className="px-8">
-            Close
-          </Button>
+          <div className="flex gap-4">
+            <Button 
+              onClick={() => setShowReview(true)} 
+              variant="outline" 
+              className="px-6"
+            >
+              Review Answers
+            </Button>
+            <Button onClick={onClose} variant="outline" className="px-8">
+              Close
+            </Button>
+          </div>
         </div>
       );
     }

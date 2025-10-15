@@ -145,6 +145,10 @@ export async function GET(request) {
             'progress.lastAccessedAt': 1,
             'completionData.completedAt': 1,
             'completionData.score': 1,
+            'completionData.answers': 1,
+            'completionData.correctAnswers': 1,
+            'completionData.totalQuestions': 1,
+            'completionData.evaluationResults': 1,
             'metadata.attempts': 1,
             'metadata.bookmarked': 1
           }
@@ -213,7 +217,18 @@ export async function GET(request) {
           completedAt: progress.completionData?.completedAt?.toISOString?.() || progress.completionData?.completedAt,
           score: progress.completionData?.score,
           attempts: progress.metadata?.attempts || 0,
-          bookmarked: progress.metadata?.bookmarked || false
+          bookmarked: progress.metadata?.bookmarked || false,
+          // Include the complete completionData object
+          completionData: progress.completionData ? {
+            completedAt: progress.completionData.completedAt?.toISOString?.() || progress.completionData.completedAt,
+            score: progress.completionData.score,
+            answers: progress.completionData.answers,
+            correctAnswers: progress.completionData.correctAnswers,
+            totalQuestions: progress.completionData.totalQuestions,
+            timeToComplete: progress.completionData.timeToComplete,
+            feedback: progress.completionData.feedback,
+            evaluationResults: progress.completionData.evaluationResults
+          } : null
         } : null,
         
         // Content type specific fields
