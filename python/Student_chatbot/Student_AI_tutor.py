@@ -335,6 +335,7 @@ class AsyncRAGTutor:
         self.config.qdrant_collection_name = f"rag_session_{unique_id}"
 
         self.turn_count = 0
+        self.current_lesson_step = 1
         logging.info(f"Initialized new tutor instance with collection: {self.config.qdrant_collection_name}")
 
         try:
@@ -454,8 +455,10 @@ class AsyncRAGTutor:
 
             # Construct the search query using student details
             grade = "not specified"
+            subject = "not specified"
             if student_details:
-                grade = student_details.get("grade", "not specified")
+                grade = student_details.get("grade")
+                subject = student_details.get("subject")
 
             # Intelligently guess the subject from the query
             # subject_guesser_prompt = PromptTemplate.from_template(
@@ -466,7 +469,7 @@ class AsyncRAGTutor:
             # subject_guesser_chain = subject_guesser_prompt | self.llm | StrOutputParser()
             # guessed_subject = await subject_guesser_chain.ainvoke({"query": query})
             
-            search_query = f"Grade Level: {grade}. Topic: {query}"
+            search_query = f"Grade Level: {grade}. Topic: {query}, subject: {subject}."
             logger.info(f"Performing curriculum vector search with query: '{search_query}'")
             
             found_docs = await vector_store.asimilarity_search(query=search_query, k=20)
@@ -842,7 +845,14 @@ class AsyncRAGTutor:
         # Search curriculum before generating the prompt
         curriculum_context = await self._search_curriculum_async(query, student_details)
 
-        # Logic to select the correct prompt based on conversation history
+        curriculum_context = await self._search_curriculum_async(query, student_details)
+
+        # --- START OF CHANGE ---
+        # Format the conversation history for injection into the main prompt
+        chat_history_for_prompt = "\n".join(
+            [f"{'AI' if msg.get('role') in ['assistant', 'ai'] else 'User'}: {msg.get('content', '')}" for msg in (history or [])[-10:]]
+        )
+
         if self.turn_count > 1:
             system_prompt_template = self.config.student_follow_up_system_prompt
             logging.info("Using follow-up system prompt for student.")
@@ -850,11 +860,14 @@ class AsyncRAGTutor:
             system_prompt_template = self.config.student_initial_system_prompt
             logging.info("Using initial system prompt for student.")
 
+        # Inject the formatted chat history into the selected prompt template
         system_prompt_text = system_prompt_template.format(
             current_time=formatted_time,
             student_details_schema=student_details_str,
             curriculum_context=curriculum_context,
-            teacher_feedback_context=feedback_context  # NEW: Add feedback context
+            teacher_feedback_context=feedback_context,
+            chat_history=chat_history_for_prompt, # This line injects the history
+            current_step=self.current_lesson_step
         )
         
         prompt_notes = []
@@ -1206,15 +1219,18 @@ class AsyncRAGTutor:
             if student_details:
                 student_details_str = f"Student Details: {json.dumps(student_details)}\n\n"
 
+            # --- START OF CHANGE ---
+            # Formats the last 4 messages from the history into a string for the prompt.
             history_str_parts = []
-            for msg in history[-4:]:
+            for msg in history[-4:]: # Takes the last 4 messages for context
                 role = "AI" if msg.get("role") in ["assistant", "ai"] else "User"
                 content = msg.get("content", "")
                 history_str_parts.append(f"{role}: {content}")
 
             chat_history_str += "\n".join(history_str_parts)
+            # --- END OF CHANGE ---
 
-            # The context passed to the chain will now include student details
+            # The 'chat_history_str' is now passed into the prompt template.
             rephrased = await self.rephrase_chain.ainvoke({
                 "chat_history": chat_history_str,
                 "question": query,
