@@ -52,6 +52,7 @@ export default async function AdminHistoryPage({ searchParams }) {
 
   const initialConversations = conversationsResult.success ? conversationsResult.data : [];
   const initialStats = statsResult.success ? statsResult.data : null;
+  const initialPagination = conversationsResult.success ? conversationsResult.pagination : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900">
@@ -100,11 +101,12 @@ export default async function AdminHistoryPage({ searchParams }) {
             <div className="animate-spin rounded-full size-8 border-b-2 border-primary"></div>
           </div>
         }>
-          <HistoryClient 
-            initialConversations={initialConversations}
-            initialStats={initialStats}
-            initialTab={tab}
-          />
+        <HistoryClient 
+          initialConversations={initialConversations}
+          initialStats={initialStats}
+          initialTab={tab}
+          initialPagination={initialPagination}
+        />
         </Suspense>
       </div>
     </div>

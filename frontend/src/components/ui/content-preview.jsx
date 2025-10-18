@@ -337,12 +337,17 @@ export default function ContentPreview({
             <ScrollArea className="h-[600px] w-full">
               <div className="prose prose-gray max-w-none markdown-content">
                 {contentData.content ? (
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={MarkdownStyles}
+                  <div 
+                    dir={/[\u0600-\u06FF\u0750-\u077F]/.test(contentData.content) ? 'rtl' : 'ltr'}
+                    style={/[\u0600-\u06FF\u0750-\u077F]/.test(contentData.content) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
                   >
-                    {contentData.content}
-                  </ReactMarkdown>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={MarkdownStyles}
+                    >
+                      {contentData.content}
+                    </ReactMarkdown>
+                  </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />

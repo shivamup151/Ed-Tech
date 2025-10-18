@@ -551,12 +551,17 @@ Current page conversations: ${result.data.conversations.length}
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
                       }`}>
                         <div className="text-sm">
-                          <ReactMarkdown
-                            components={MarkdownStyles}
-                            remarkPlugins={[remarkGfm]}
+                          <div 
+                            dir={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? 'rtl' : 'ltr'}
+                            style={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
                           >
-                            {message.content}
-                          </ReactMarkdown>
+                            <ReactMarkdown
+                              components={MarkdownStyles}
+                              remarkPlugins={[remarkGfm]}
+                            >
+                              {message.content}
+                            </ReactMarkdown>
+                          </div>
                         </div>
                         <div className={`text-xs mt-2 ${message.role === 'user' 
                           ? 'text-purple-100' 

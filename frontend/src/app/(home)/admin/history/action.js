@@ -34,7 +34,7 @@ function serializeMongoData(data) {
 }
 
 // Get all conversations (both teacher and student) for admin view
-export async function getAllConversations() {
+export async function getAllConversations(page = 1, limit = 10) {
   try {
     const session = await getServerSession();
     if (!session?.user?.id) {
@@ -48,16 +48,20 @@ export async function getAllConversations() {
 
     const { db } = await connectToDatabase();
 
-    // Get student conversations
+    // Get student conversations with pagination
     const studentConversations = await db.collection('student_conversations')
       .find({})
       .sort({ 'metadata.lastMessageAt': -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
       .toArray();
 
-    // Get teacher conversations
+    // Get teacher conversations with pagination
     const teacherConversations = await db.collection('teacherConversations')
       .find({})
       .sort({ updatedAt: -1, createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
       .toArray();
 
     // Get all unique user IDs
@@ -137,13 +141,24 @@ export async function getAllConversations() {
       };
     });
 
+    // Get total counts for pagination
+    const totalStudentCount = await db.collection('student_conversations').countDocuments({});
+    const totalTeacherCount = await db.collection('teacherConversations').countDocuments({});
+    const totalCount = totalStudentCount + totalTeacherCount;
+
     // Combine and sort all conversations
     const allConversations = [...transformedStudentConversations, ...transformedTeacherConversations]
       .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
 
     return {
       success: true,
-      data: serializeMongoData(allConversations)
+      data: serializeMongoData(allConversations),
+      pagination: {
+        page: page,
+        limit: limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit)
+      }
     };
   } catch (error) {
     console.error('Error fetching all conversations:', error);
@@ -165,19 +180,24 @@ export async function getConversationsByType(formData) {
     }
 
     const type = formData.get('type') || 'all';
+    const page = parseInt(formData.get('page')) || 1;
+    const limit = parseInt(formData.get('limit')) || 10;
     const { db } = await connectToDatabase();
 
     let conversations = [];
+    let totalCount = 0;
 
     if (type === 'all') {
       // Get all conversations
-      const result = await getAllConversations();
+      const result = await getAllConversations(page, limit);
       return result;
     } else if (type === 'teacher') {
       // Get only teacher conversations
       const teacherConversations = await db.collection('teacherConversations')
         .find({})
         .sort({ updatedAt: -1, createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
         .toArray();
 
       // Get teacher user IDs
@@ -223,11 +243,16 @@ export async function getConversationsByType(formData) {
           teacherData: conv.teacherData || {}
         };
       });
+
+      // Get total count for teacher conversations
+      const totalCount = await db.collection('teacherConversations').countDocuments({});
     } else if (type === 'student') {
       // Get only student conversations
       const studentConversations = await db.collection('student_conversations')
         .find({})
         .sort({ 'metadata.lastMessageAt': -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
         .toArray();
 
       // Get student user IDs
@@ -273,11 +298,20 @@ export async function getConversationsByType(formData) {
           studentData: conv.studentData || {}
         };
       });
+
+      // Get total count for student conversations
+      const totalCount = await db.collection('student_conversations').countDocuments({});
     }
 
     return {
       success: true,
-      data: serializeMongoData(conversations)
+      data: serializeMongoData(conversations),
+      pagination: {
+        page: page,
+        limit: limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit)
+      }
     };
   } catch (error) {
     console.error('Error fetching conversations by type:', error);
