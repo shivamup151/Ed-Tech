@@ -36,25 +36,37 @@ import {
   getConversationDetails
 } from "./action";
 
-export default function HistoryClient({ initialConversations, initialStats, initialTab }) {
+export default function HistoryClient({ initialConversations, initialStats, initialTab, initialPagination }) {
   const [conversations, setConversations] = useState(initialConversations);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTab, setSelectedTab] = useState(initialTab);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [stats, setStats] = useState(initialStats);
+  const [pagination, setPagination] = useState(initialPagination || { page: 1, limit: 10, total: 0, totalPages: 0 });
+  const [isClient, setIsClient] = useState(false);
 
-  // Load conversations based on selected tab
-  const loadConversations = async (tab = selectedTab) => {
+  // Fix hydration mismatch by ensuring client-side rendering
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Load conversations based on selected tab and page
+  const loadConversations = async (tab = selectedTab, page = pagination.page) => {
     try {
       setLoading(true);
       const formData = new FormData();
       formData.append("type", tab);
+      formData.append("page", page.toString());
+      formData.append("limit", pagination.limit.toString());
 
       const result = await getConversationsByType(formData);
       
       if (result.success) {
         setConversations(result.data);
+        if (result.pagination) {
+          setPagination(result.pagination);
+        }
       } else {
         toast.error(result.error || "Failed to load conversations");
       }
@@ -155,9 +167,28 @@ export default function HistoryClient({ initialConversations, initialStats, init
     setSelectedConversation(null);
   };
 
+  // Pagination handlers
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      loadConversations(selectedTab, newPage);
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (pagination.page > 1) {
+      handlePageChange(pagination.page - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (pagination.page < pagination.totalPages) {
+      handlePageChange(pagination.page + 1);
+    }
+  };
+
   useEffect(() => {
     if (selectedTab !== initialTab) {
-      loadConversations(selectedTab);
+      loadConversations(selectedTab, 1); // Reset to page 1 when changing tabs
     }
   }, [selectedTab]);
 
@@ -169,20 +200,37 @@ export default function HistoryClient({ initialConversations, initialStats, init
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground size-4" />
-              <Input
-                placeholder="Search conversations..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+              {isClient ? (
+                <Input
+                  placeholder="Search conversations..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              ) : (
+                <input
+                  type="text"
+                  placeholder="Search conversations..."
+                  defaultValue=""
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pl-10"
+                />
+              )}
             </div>
-            <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-              <TabsList className="w-full sm:w-auto">
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="student">Student</TabsTrigger>
-                <TabsTrigger value="teacher">Teacher</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {isClient ? (
+              <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+                <TabsList className="w-full sm:w-auto">
+                  <TabsTrigger value="all">All</TabsTrigger>
+                  <TabsTrigger value="student">Student</TabsTrigger>
+                  <TabsTrigger value="teacher">Teacher</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            ) : (
+              <div className="flex rounded-md bg-muted p-1 text-muted-foreground w-full sm:w-auto">
+                <div className="flex rounded-sm bg-background px-3 py-1.5 text-sm font-medium ring-1 ring-inset ring-ring">
+                  {selectedTab === 'all' ? 'All' : selectedTab === 'student' ? 'Student' : 'Teacher'}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -270,6 +318,63 @@ export default function HistoryClient({ initialConversations, initialStats, init
           })
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {pagination.totalPages > 1 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} conversations
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePreviousPage}
+                  disabled={pagination.page <= 1}
+                >
+                  Previous
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (pagination.totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (pagination.page <= 3) {
+                      pageNum = i + 1;
+                    } else if (pagination.page >= pagination.totalPages - 2) {
+                      pageNum = pagination.totalPages - 4 + i;
+                    } else {
+                      pageNum = pagination.page - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={pageNum === pagination.page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(pageNum)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNextPage}
+                  disabled={pagination.page >= pagination.totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Conversation Preview Modal */}
       {selectedConversation && (

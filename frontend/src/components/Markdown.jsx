@@ -6,6 +6,13 @@ import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
 
+// Arabic text detection utility
+const detectArabic = (text) => {
+  if (!text || typeof text !== 'string') return false;
+  // Check for Arabic Unicode ranges: \u0600-\u06FF (Arabic), \u0750-\u077F (Arabic Supplement)
+  return /[\u0600-\u06FF\u0750-\u077F]/.test(text);
+};
+
 // Enhanced text processing to detect and render mathematical equations
 const processTextForMath = (text) => {
   if (!text) return text;
@@ -221,7 +228,7 @@ export const MarkdownStyles = {
     <h6 className="text-base font-semibold tracking-tight mt-3" {...props} />
   ),
 
-  // Text with math processing
+  // Text with math processing and RTL support
   p: ({ node, children, ...props }) => {
     // Process text content to detect and convert image URLs and math
     const processedChildren = React.Children.map(children, (child) => {
@@ -232,8 +239,17 @@ export const MarkdownStyles = {
       return child;
     });
     
+    // Check if content contains Arabic text
+    const textContent = React.Children.toArray(children).join('');
+    const hasArabic = detectArabic(textContent);
+    
     return (
-      <p className="leading-7 [&:not(:first-child)]:mt-6" {...props}>
+      <p 
+        className={`leading-7 [&:not(:first-child)]:mt-6 ${hasArabic ? 'text-right' : ''}`}
+        dir={hasArabic ? 'rtl' : 'ltr'}
+        style={hasArabic ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+        {...props}
+      >
         {processedChildren}
       </p>
     );
@@ -259,14 +275,23 @@ export const MarkdownStyles = {
       return child;
     });
     
+    // Check if content contains Arabic text
+    const textContent = React.Children.toArray(children).join('');
+    const hasArabic = detectArabic(textContent);
+    
     return (
-      <li {...props}>
+      <li 
+        className={hasArabic ? 'text-right' : ''}
+        dir={hasArabic ? 'rtl' : 'ltr'}
+        style={hasArabic ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+        {...props}
+      >
         {processedChildren}
       </li>
     );
   },
 
-  // Blockquote with math processing
+  // Blockquote with math processing and RTL support
   blockquote: ({ node, children, ...props }) => {
     const processedChildren = React.Children.map(children, (child) => {
       if (typeof child === 'string') {
@@ -276,8 +301,17 @@ export const MarkdownStyles = {
       return child;
     });
     
+    // Check if content contains Arabic text
+    const textContent = React.Children.toArray(children).join('');
+    const hasArabic = detectArabic(textContent);
+    
     return (
-      <blockquote className="mt-6 border-l-2 pl-6 italic text-muted-foreground" {...props}>
+      <blockquote 
+        className={`mt-6 border-l-2 pl-6 italic text-muted-foreground ${hasArabic ? 'text-right border-r-2 border-l-0 pr-6 pl-0' : ''}`}
+        dir={hasArabic ? 'rtl' : 'ltr'}
+        style={hasArabic ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+        {...props}
+      >
         {processedChildren}
       </blockquote>
     );
