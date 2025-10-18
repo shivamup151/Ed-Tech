@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import Script from "next/script";
 import WeglotProvider from "@/components/WeglotProvider";
+import NoSSR from "@/components/NoSSR";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,11 +40,13 @@ export default function RootLayout({ children }) {
         <Toaster />
         
         {/* Weglot Translation Script */}
-        <Script
-          src="https://cdn.weglot.com/weglot.min.js"
-          strategy="lazyOnload"
-        />
-        <WeglotProvider />
+        <NoSSR>
+          <Script
+            src="https://cdn.weglot.com/weglot.min.js"
+            strategy="lazyOnload"
+          />
+          <WeglotProvider />
+        </NoSSR>
       </body>
     </html>
   );

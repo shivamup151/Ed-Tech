@@ -85,7 +85,7 @@ const AiTutor = () => {
             id: 1,
             type: 'ai',
             content: "Hi there! 👋 I'm your AI Tutor Buddy! I'm here to help you learn and understand your homework. What would you like to work on today?",
-            timestamp: new Date(),
+            timestamp: null, // Will be set on client side
             avatar: <GraduationCap className="w-4 h-4 text-blue-500" /> // CHANGED: Use GraduationCap
         }
     ]);
@@ -132,6 +132,17 @@ const AiTutor = () => {
     // NEW: Add subjects state
     const [availableSubjects, setAvailableSubjects] = useState([]);
 
+    // Fix hydration mismatch by ensuring client-side rendering
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+        // Set timestamp for initial message on client side
+        setMessages(prev => prev.map((msg, index) => 
+            index === 0 ? { ...msg, timestamp: new Date() } : msg
+        ));
+    }, []);
+
     // FIXED: Initialize audio context when component mounts
     useEffect(() => {
         const initAudioContext = async () => {
@@ -159,11 +170,11 @@ const AiTutor = () => {
                 if (!lastMessage || lastMessage.type !== 'ai' || !lastMessage.isLive) {
                     // Add new live message
                     newMessages.push({ 
-                        id: Date.now() + Math.random(),
+                        id: isClient ? Date.now() + Math.random() : Math.random(),
                         type: 'ai', 
                         content: transcription, 
                         isLive: true,
-                        timestamp: new Date(),
+                        timestamp: isClient ? new Date() : null,
                         avatar: <GraduationCap className="w-4 h-4 text-blue-500" />
                     });
                 } else {
@@ -414,10 +425,10 @@ const AiTutor = () => {
 
             // Add user message to chat - FIXED: Use unique key generation
             const userMessage = {
-                id: Date.now() + Math.random(),
+                id: isClient ? Date.now() + Math.random() : Math.random(),
                 type: 'user',
                 content: currentQuery,
-                timestamp: new Date(),
+                timestamp: isClient ? new Date() : null,
                 avatar: <User className="w-4 h-4 text-blue-500" />
             };
 

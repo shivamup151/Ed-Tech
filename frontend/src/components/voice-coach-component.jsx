@@ -108,7 +108,7 @@ const VoiceCoach = () => {
             id: 1,
             type: 'ai',
             content: "Hello! 👋 I'm your Voice Coach! I'm here to help you improve your teaching methods, classroom management, and student engagement. What teaching challenge would you like to work on today?",
-            timestamp: new Date(),
+            timestamp: null, // Will be set on client side
             avatar: <GraduationCap className="w-4 h-4 text-blue-500" />
         }
     ]);
@@ -135,6 +135,21 @@ const VoiceCoach = () => {
 
     // Get API key from environment or localStorage
     const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || (typeof window !== 'undefined' ? localStorage.getItem('openai_api_key') : '');
+
+    // Fix hydration mismatch by ensuring client-side rendering
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+        // Set timestamp for initial message on client side
+        setMessages(prev => prev.map((msg, index) => 
+            index === 0 ? { ...msg, timestamp: new Date() } : msg
+        ));
+    }, []);
+
+    // Helper function to generate safe IDs and timestamps
+    const generateMessageId = () => isClient ? Date.now() + Math.random() : Math.random();
+    const generateTimestamp = () => isClient ? new Date() : null;
 
     // OPTIMIZED: Single state for all teacher data
     const [teacherData, setTeacherData] = useState({
@@ -185,11 +200,11 @@ const VoiceCoach = () => {
                 if (!lastMessage || lastMessage.type !== 'ai' || !lastMessage.isLive) {
                     // Add new live message
                     newMessages.push({ 
-                        id: Date.now() + Math.random(),
+                        id: generateMessageId(),
                         type: 'ai', 
                         content: transcript, 
                         isLive: true,
-                        timestamp: new Date(),
+                        timestamp: generateTimestamp(),
                         avatar: <GraduationCap className="w-4 h-4 text-blue-500" />
                     });
                 } else {
@@ -284,10 +299,10 @@ const VoiceCoach = () => {
         if (!inputValue.trim() || isLoading || !sessionId || !teacherData.teacher) return;
 
         const userMessage = {
-            id: Date.now(),
+            id: generateMessageId(),
             type: 'user',
             content: inputValue,
-            timestamp: new Date(),
+            timestamp: generateTimestamp(),
             avatar: <User className="w-4 h-4 text-blue-500" />
         };
 
@@ -312,10 +327,10 @@ const VoiceCoach = () => {
 
             if (response.success) {
                 const aiMessage = {
-                    id: Date.now() + 1,
+                    id: generateMessageId(),
                     type: 'ai',
                     content: response.response,
-                    timestamp: new Date(),
+                    timestamp: generateTimestamp(),
                     avatar: <GraduationCap className="w-4 h-4 text-blue-500" />
                 };
 
@@ -336,10 +351,10 @@ const VoiceCoach = () => {
                 });
             } else {
                 const errorMessage = {
-                    id: Date.now() + 1,
+                    id: generateMessageId(),
                     type: 'ai',
                     content: `Sorry, I encountered an error: ${response.error}`,
-                    timestamp: new Date(),
+                    timestamp: generateTimestamp(),
                     avatar: <GraduationCap className="w-4 h-4 text-red-500" />
                 };
 
@@ -349,10 +364,10 @@ const VoiceCoach = () => {
             toast.error('Failed to send message. Please try again.');
 
             const errorMessage = {
-                id: Date.now() + 1,
+                id: generateMessageId(),
                 type: 'ai',
                 content: 'Sorry, I encountered an error while processing your message. Please try again.',
-                timestamp: new Date(),
+                timestamp: generateTimestamp(),
                 avatar: <GraduationCap className="w-4 h-4 text-red-500" />
             };
 
@@ -373,10 +388,10 @@ const VoiceCoach = () => {
     // Clear chat
     const handleClearChat = () => {
         const clearMessage = {
-            id: Date.now(),
+            id: generateMessageId(),
             type: 'ai',
             content: "Chat cleared! How can I help you with your teaching today?",
-            timestamp: new Date(),
+            timestamp: generateTimestamp(),
             avatar: <GraduationCap className="w-4 h-4 text-blue-500" />
         };
         setMessages([clearMessage]);
@@ -438,10 +453,10 @@ const VoiceCoach = () => {
 
             openAIServiceRef.current.onUserTranscript = (userTranscript) => {
                 const userMessage = {
-                    id: Date.now() + Math.random(),
+                    id: generateMessageId(),
                     type: 'user',
                     content: userTranscript,
-                    timestamp: new Date(),
+                    timestamp: generateTimestamp(),
                     avatar: <User className="w-4 h-4 text-blue-500" />
                 };
                 
@@ -533,7 +548,7 @@ const VoiceCoach = () => {
             setIsConnected(true);
             setIsFirstLoad(false); // Trigger intro video
             setMessages(prev => [...prev, { 
-                id: Date.now() + Math.random(),
+                id: generateMessageId(),
                 type: 'system', 
                 content: `🎤 Voice connection established! Start speaking with your AI Voice Coach.` 
             }]);
@@ -541,7 +556,7 @@ const VoiceCoach = () => {
         } catch (error) {
             setError(`Failed to connect: ${error.message}`);
             setMessages(prev => [...prev, { 
-                id: Date.now() + Math.random(),
+                id: generateMessageId(),
                 type: 'error', 
                 content: `❌ Connection failed: ${error.message}` 
             }]);
@@ -574,7 +589,7 @@ const VoiceCoach = () => {
             setIsSpeaking(false);
             
             setMessages(prev => [...prev, { 
-                id: Date.now() + Math.random(),
+                id: generateMessageId(),
                 type: 'system', 
                 content: '🔌 Voice connection ended. It was a pleasure to help you today!' 
             }]);
@@ -625,10 +640,10 @@ const VoiceCoach = () => {
                 toast.success(`Uploaded ${files.length} file(s) successfully`);
                 
                 const uploadMessage = {
-                    id: Date.now() + Math.random(),
+                    id: generateMessageId(),
                     type: 'ai',
                     content: `I've received ${files.length} file(s). I can now help you analyze and discuss the content. What would you like to know about these documents?`,
-                    timestamp: new Date(),
+                    timestamp: generateTimestamp(),
                     avatar: <File className="w-4 h-4 text-green-500" />
                 };
                 setMessages(prev => [...prev, uploadMessage]);
@@ -648,10 +663,10 @@ const VoiceCoach = () => {
         toast.info('Cleared uploaded documents');
         
         const clearMessage = {
-            id: Date.now() + Math.random(),
+            id: generateMessageId(),
             type: 'ai',
             content: "🗑️ Cleared all uploaded documents. You can upload new ones anytime!",
-            timestamp: new Date(),
+            timestamp: generateTimestamp(),
             avatar: <GraduationCap className="w-4 h-4 text-blue-500" />
         };
         setMessages(prev => [...prev, clearMessage]);
@@ -681,10 +696,10 @@ const VoiceCoach = () => {
                     setUploadedFiles(prev => [...prev, ...files]);
                     
                     const uploadMessage = {
-                        id: Date.now() + Math.random(),
+                        id: generateMessageId(),
                         type: 'ai',
                         content: `✅ Successfully uploaded ${files.length} document(s)! I can now help you with questions about these files.`,
-                        timestamp: new Date(),
+                        timestamp: generateTimestamp(),
                         avatar: <GraduationCap className="w-4 h-4 text-blue-500" />
                     };
                     setMessages(prev => [...prev, uploadMessage]);
@@ -697,10 +712,10 @@ const VoiceCoach = () => {
                 toast.error('Failed to upload documents. Please try again.');
                 
                 const errorMessage = {
-                    id: Date.now() + Math.random(),
+                    id: generateMessageId(),
                     type: 'error',
                     content: "❌ Failed to upload your documents. Please try again or contact support if the problem persists.",
-                    timestamp: new Date(),
+                    timestamp: generateTimestamp(),
                     avatar: <GraduationCap className="w-4 h-4 text-blue-500" />
                 };
                 setMessages(prev => [...prev, errorMessage]);

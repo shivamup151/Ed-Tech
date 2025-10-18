@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function WeglotProvider() {
+  const [isClient, setIsClient] = useState(false);
+
   useEffect(() => {
+    setIsClient(true);
+    
     // Only initialize Weglot on the client side after hydration
     const initWeglot = () => {
       if (typeof window !== 'undefined' && window.Weglot && window.Weglot.initialize) {
@@ -24,11 +28,20 @@ export default function WeglotProvider() {
       }
     };
 
-    // Small delay to ensure DOM is fully ready
-    const timer = setTimeout(initWeglot, 100);
-    
-    return () => clearTimeout(timer);
+    // Wait for DOM to be ready and add a small delay
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initWeglot, 200);
+      });
+    } else {
+      setTimeout(initWeglot, 200);
+    }
   }, []);
+
+  // Don't render anything during SSR to prevent hydration mismatches
+  if (!isClient) {
+    return null;
+  }
 
   return null; // This component doesn't render anything
 }
