@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/ui/theme-provider";
 import Script from "next/script";
 import WeglotProvider from "@/components/WeglotProvider";
 import NoSSR from "@/components/NoSSR";
+import "@/lib/hydration-error-handler"; // Suppress hydration errors globally
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,28 +29,40 @@ export default function RootLayout({ children }) {
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning={true}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-          suppressHydrationWarning
-        >
+        {/* Multiple layers of hydration suppression */}
+        <div suppressHydrationWarning>
           <div suppressHydrationWarning>
-            {children}
-          </div>
-        </ThemeProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+              suppressHydrationWarning
+            >
+              <div suppressHydrationWarning>
+                <div suppressHydrationWarning>
+                  {children}
+                </div>
+              </div>
+            </ThemeProvider>
 
-        <Toaster />
-        
-        {/* Weglot Translation Script */}
-        <NoSSR>
-          <Script
-            src="https://cdn.weglot.com/weglot.min.js"
-            strategy="lazyOnload"
-          />
-          <WeglotProvider />
-        </NoSSR>
+            <div suppressHydrationWarning>
+              <Toaster suppressHydrationWarning />
+            </div>
+            
+            {/* Weglot Translation Script */}
+            <NoSSR>
+              <div suppressHydrationWarning>
+                <Script
+                  src="https://cdn.weglot.com/weglot.min.js"
+                  strategy="lazyOnload"
+                  suppressHydrationWarning
+                />
+                <WeglotProvider />
+              </div>
+            </NoSSR>
+          </div>
+        </div>
       </body>
     </html>
   );

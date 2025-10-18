@@ -82,3 +82,22 @@ export const ClientOnly = ({ children, fallback = null }) => {
   
   return children;
 };
+
+/**
+ * Hook to safely access browser APIs
+ */
+export const useSafeBrowserAPI = () => {
+  const [isClient, setIsClient] = React.useState(false);
+  
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
+  return {
+    isClient,
+    localStorage: isClient ? window.localStorage : null,
+    sessionStorage: isClient ? window.sessionStorage : null,
+    document: isClient ? window.document : null,
+    window: isClient ? window : null,
+  };
+};

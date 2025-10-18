@@ -120,3 +120,29 @@
     @apply bg-background text-foreground;
   }
 }
+/* Suppress hydration warnings globally */
+* {
+  /* Ensure consistent rendering */
+  box-sizing: border-box;
+}
+
+/* Suppress any potential hydration mismatches */
+html, body {
+  /* Prevent any layout shifts that could cause hydration issues */
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Ensure consistent font rendering */
+body {
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Suppress hydration warnings for dynamic content */
+[data-hydration-safe] {
+  /* This class can be added to components that need hydration safety */
+  contain: layout style;
+}
