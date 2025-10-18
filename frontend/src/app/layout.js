@@ -35,7 +35,9 @@ export default function RootLayout({ children }) {
           disableTransitionOnChange
           suppressHydrationWarning
         >
-          {children}
+          <div suppressHydrationWarning>
+            {children}
+          </div>
         </ThemeProvider>
 
         <Toaster />

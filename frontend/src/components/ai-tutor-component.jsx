@@ -49,7 +49,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import PythonApi from '@/lib/PythonApi';
 import { toast } from 'sonner';
-import { MarkdownStyles } from '@/components/Markdown'; // FIXED: Use imported MarkdownStyles
+import { MarkdownStyles } from '@/components/Markdown';
+import { generateHydrationSafeId, getHydrationSafeTimestamp, useIsClient } from '@/lib/hydration-safe'; // FIXED: Use imported MarkdownStyles
 import { 
     uploadDocuments, 
     createAiTutorSession,
@@ -170,11 +171,11 @@ const AiTutor = () => {
                 if (!lastMessage || lastMessage.type !== 'ai' || !lastMessage.isLive) {
                     // Add new live message
                     newMessages.push({ 
-                        id: isClient ? Date.now() + Math.random() : Math.random(),
+                        id: generateHydrationSafeId('ai'),
                         type: 'ai', 
                         content: transcription, 
                         isLive: true,
-                        timestamp: isClient ? new Date() : null,
+                        timestamp: getHydrationSafeTimestamp(isClient),
                         avatar: <GraduationCap className="w-4 h-4 text-blue-500" />
                     });
                 } else {
@@ -425,10 +426,10 @@ const AiTutor = () => {
 
             // Add user message to chat - FIXED: Use unique key generation
             const userMessage = {
-                id: isClient ? Date.now() + Math.random() : Math.random(),
+                id: generateHydrationSafeId('user'),
                 type: 'user',
                 content: currentQuery,
-                timestamp: isClient ? new Date() : null,
+                timestamp: getHydrationSafeTimestamp(isClient),
                 avatar: <User className="w-4 h-4 text-blue-500" />
             };
 
@@ -487,10 +488,10 @@ const AiTutor = () => {
 
             // Create AI message for streaming - FIXED: Use unique key generation
             streamingMessage = {
-                id: Date.now() + Math.random(),
+                id: generateHydrationSafeId('ai'),
                 type: 'ai',
                 content: '',
-                timestamp: new Date(),
+                timestamp: getHydrationSafeTimestamp(isClient),
                 avatar: <GraduationCap className="w-4 h-4 text-blue-500" />,
                 isStreaming: true,
                 isImageResponse: false
@@ -1085,10 +1086,13 @@ Exported on: ${new Date().toLocaleDateString()}\\par\\par`;
                 
                 // Add user message to chat
                 const userMessage = {
-                    id: Date.now() + Math.random(),
+                    id: generateHydrationSafeId('user'),
                     type: 'user',
                     content: userTranscript,
-                    timestamp: new Date(),
+                    timestamp: getHydrationSafeTimestamp(isClient), 
+                    type: 'user',
+                    content: userTranscript,
+                    timestamp: getHydrationSafeTimestamp(isClient),
                     avatar: <User className="w-4 h-4 text-blue-500" />
                 };
                 

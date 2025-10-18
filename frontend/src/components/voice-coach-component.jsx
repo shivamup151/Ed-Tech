@@ -49,6 +49,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { toast } from 'sonner';
 import { MarkdownStyles } from '@/components/Markdown';
+import { generateHydrationSafeId, getHydrationSafeTimestamp, useIsClient } from '@/lib/hydration-safe';
 import { 
     sendVoiceCoachMessage, 
     uploadDocumentsToVoiceCoach, 
@@ -133,8 +134,17 @@ const VoiceCoach = () => {
     // NEW: Voice gender selection state
     const [selectedVoiceGender, setSelectedVoiceGender] = useState('female');
 
-    // Get API key from environment or localStorage
-    const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || (typeof window !== 'undefined' ? localStorage.getItem('openai_api_key') : '');
+    // Get API key from environment or localStorage - safe for SSR
+    const [apiKey, setApiKey] = useState(process.env.NEXT_PUBLIC_OPENAI_API_KEY || '');
+    
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const storedKey = localStorage.getItem('openai_api_key');
+            if (storedKey && !process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
+                setApiKey(storedKey);
+            }
+        }
+    }, []);
 
     // Fix hydration mismatch by ensuring client-side rendering
     const [isClient, setIsClient] = useState(false);
@@ -148,8 +158,8 @@ const VoiceCoach = () => {
     }, []);
 
     // Helper function to generate safe IDs and timestamps
-    const generateMessageId = () => isClient ? Date.now() + Math.random() : Math.random();
-    const generateTimestamp = () => isClient ? new Date() : null;
+    const generateMessageId = () => generateHydrationSafeId('msg');
+    const generateTimestamp = () => getHydrationSafeTimestamp(isClient);
 
     // OPTIMIZED: Single state for all teacher data
     const [teacherData, setTeacherData] = useState({
