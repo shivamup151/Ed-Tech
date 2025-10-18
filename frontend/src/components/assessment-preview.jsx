@@ -272,8 +272,27 @@ export default function AssessmentPreview({
       isCorrect = evaluationResults[question.number].isCorrect;
     } else {
       // Fallback to basic comparison (for backward compatibility)
-      isCorrect = studentAnswer !== undefined && correctAnswer !== undefined && 
-        studentAnswer.toString().toLowerCase() === correctAnswer.toLowerCase();
+      if (question.type === 'multiple_choice' || question.type === 'mcq') {
+        // For MCQ, extract the option letter from student answer and compare with correct answer
+        let studentOptionLetter = '';
+        if (studentAnswer !== undefined && studentAnswer !== null) {
+          const studentAnswerStr = studentAnswer.toString();
+          // Extract letter from format like "A. text" or "text (A)" or just "A"
+          const letterMatch = studentAnswerStr.match(/^([A-D])\.|\(([A-D])\)$|^([A-D])$/);
+          if (letterMatch) {
+            studentOptionLetter = letterMatch[1] || letterMatch[2] || letterMatch[3];
+          }
+        }
+        isCorrect = studentOptionLetter && correctAnswer && 
+          studentOptionLetter.toUpperCase() === correctAnswer.toUpperCase();
+      } else if (question.type === 'true_false') {
+        isCorrect = studentAnswer !== undefined && correctAnswer !== undefined && 
+          studentAnswer.toString().toLowerCase() === correctAnswer.toLowerCase();
+      } else {
+        // For other question types, use basic string comparison
+        isCorrect = studentAnswer !== undefined && correctAnswer !== undefined && 
+          studentAnswer.toString().toLowerCase() === correctAnswer.toLowerCase();
+      }
     }
 
 
@@ -319,7 +338,15 @@ export default function AssessmentPreview({
         {question.type === 'multiple_choice' && question.options && question.options.length > 0 && (
           <div className="space-y-2">
             {question.options.map((option, optionIndex) => {
-              const isSelected = studentAnswer === optionIndex;
+              // Check if this option is selected by comparing the full option text or extracted letter
+              let isSelected = false;
+              if (studentAnswer !== undefined && studentAnswer !== null) {
+                const studentAnswerStr = studentAnswer.toString();
+                // Check if student answer matches the full option text or the option letter
+                isSelected = studentAnswerStr === option.text || 
+                           studentAnswerStr === option.id || 
+                           studentAnswerStr === String.fromCharCode(65 + optionIndex);
+              }
               const isCorrectOption = correctAnswer && option.id === correctAnswer.toLowerCase();
               
               let optionClass = "p-3 rounded border transition-colors";

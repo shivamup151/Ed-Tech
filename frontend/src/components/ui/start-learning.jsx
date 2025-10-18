@@ -398,9 +398,17 @@ const InteractiveAssessment = ({ assessment, onAnswerChange, studentAnswers, onS
       let evaluationDetails = null;
 
       if (question.type === 'mcq') {
-        // For MCQ, compare the selected option
-        isCorrect = studentAnswer === correctAnswer;
-        evaluationDetails = { method: 'exact_match' };
+        // For MCQ, extract the option letter from student answer and compare with correct answer
+        let studentOptionLetter = '';
+        if (studentAnswer) {
+          // Extract letter from format like "A. text" or "text (A)" or just "A"
+          const letterMatch = studentAnswer.match(/^([A-D])\.|\(([A-D])\)$|^([A-D])$/);
+          if (letterMatch) {
+            studentOptionLetter = letterMatch[1] || letterMatch[2] || letterMatch[3];
+          }
+        }
+        isCorrect = studentOptionLetter && studentOptionLetter.toUpperCase() === correctAnswer.toUpperCase();
+        evaluationDetails = { method: 'exact_match', studentOptionLetter, correctAnswer };
       } else if (question.type === 'true_false') {
         // For True/False, compare the boolean value
         isCorrect = studentAnswer && studentAnswer.toLowerCase() === correctAnswer.toLowerCase();
@@ -774,8 +782,17 @@ const AssessmentReview = ({ assessment, studentAnswers, score, correctAnswers, t
     } else {
       // Fallback to basic comparison (for backward compatibility)
       if (question.type === 'mcq') {
-        isCorrect = studentAnswer === correctAnswer;
-        evaluationDetails = { method: 'exact_match_fallback' };
+        // For MCQ, extract the option letter from student answer and compare with correct answer
+        let studentOptionLetter = '';
+        if (studentAnswer) {
+          // Extract letter from format like "A. text" or "text (A)" or just "A"
+          const letterMatch = studentAnswer.match(/^([A-D])\.|\(([A-D])\)$|^([A-D])$/);
+          if (letterMatch) {
+            studentOptionLetter = letterMatch[1] || letterMatch[2] || letterMatch[3];
+          }
+        }
+        isCorrect = studentOptionLetter && studentOptionLetter.toUpperCase() === correctAnswer.toUpperCase();
+        evaluationDetails = { method: 'exact_match_fallback', studentOptionLetter, correctAnswer };
       } else if (question.type === 'true_false') {
         isCorrect = studentAnswer && studentAnswer.toLowerCase() === correctAnswer.toLowerCase();
         evaluationDetails = { method: 'exact_match_fallback' };
