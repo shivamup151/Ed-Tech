@@ -16,6 +16,12 @@ const nextConfig = {
   // Reduce preloading warnings
   poweredByHeader: false,
   generateEtags: false,
+  // Font optimization
+  optimizeFonts: true,
+  // Reduce font preloading warnings
+  optimizeCss: true,
+  // Disable unnecessary preloading
+  swcMinify: true,
 };
 
 export default nextConfig;

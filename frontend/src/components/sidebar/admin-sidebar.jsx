@@ -37,12 +37,19 @@ export function AdminSidebar() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
 
   const isActivePath = useCallback((url) => {
     return pathname === url;
   }, [pathname]);
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+    
     const getUser = async () => {
       try {
         const { data } = await authClient.getSession();
@@ -55,7 +62,7 @@ export function AdminSidebar() {
     };
 
     getUser();
-  }, []);
+  }, [isClient]);
 
   const handleLogout = async () => {
     try {
@@ -67,7 +74,7 @@ export function AdminSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" suppressHydrationWarning>
 
       <SidebarHeader className="border-b border-border">
         <div className="flex items-center justify-between p-4">
@@ -116,6 +123,7 @@ export function AdminSidebar() {
             onClick={handleLogout}
             className="flex-1 h-8 px-2 group-data-[collapsible=icon]:px-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
             title="Logout"
+            suppressHydrationWarning
           >
             <LogOut className="h-4 w-4" />
             <span className="ml-2 text-xs group-data-[collapsible=icon]:hidden">
@@ -124,7 +132,7 @@ export function AdminSidebar() {
           </Button>
           
           {/* Theme Toggle next to Logout */}
-          <div className="group-data-[collapsible=icon]:hidden">
+          <div className="group-data-[collapsible=icon]:hidden" suppressHydrationWarning>
             <ModeToggle />
           </div>
         </div>

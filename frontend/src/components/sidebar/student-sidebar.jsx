@@ -95,12 +95,19 @@ export function StudentSidebar() {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isClient, setIsClient] = useState(false)
 
   const isActivePath = useCallback((url) => {
     return pathname === url
   }, [pathname])
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+    
     const getUser = async () => {
       try {
         const { data } = await authClient.getSession()
@@ -113,7 +120,7 @@ export function StudentSidebar() {
     }
 
     getUser()
-  }, [])
+  }, [isClient])
 
   const handleLogout = async () => {
     try {
@@ -125,7 +132,7 @@ export function StudentSidebar() {
   }
 
   return (
-    <Sidebar className="border-r border-border/40">
+    <Sidebar className="border-r border-border/40" suppressHydrationWarning>
       {/* Header with logo and title */}
       <SidebarHeader className="border-b border-border/40 p-6">
         <div className="flex items-center gap-3">
@@ -205,6 +212,7 @@ export function StudentSidebar() {
             onClick={handleLogout}
             className="flex-1 h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
             title="Logout"
+            suppressHydrationWarning
           >
             <LogOut className="h-4 w-4" />
             <span className="ml-2 text-xs">
@@ -213,7 +221,7 @@ export function StudentSidebar() {
           </Button>
           
           {/* Theme Toggle next to Logout */}
-          <div>
+          <div suppressHydrationWarning>
             <ModeToggle />
           </div>
         </div>
