@@ -401,12 +401,35 @@ const InteractiveAssessment = ({ assessment, onAnswerChange, studentAnswers, onS
         // For MCQ, extract the option letter from student answer and compare with correct answer
         let studentOptionLetter = '';
         if (studentAnswer) {
-          // Extract letter from format like "A. text" or "text (A)" or just "A"
-          const letterMatch = studentAnswer.match(/^([A-D])\.|\(([A-D])\)$|^([A-D])$/);
+          // Extract letter from format like "A. text" or "text (A)" or just "A" or "الخلايا" (Arabic text)
+          const letterMatch = studentAnswer.match(/^([A-D])\.|\(([A-D])\)$|^([A-D])$|^([A-D])\.\s*[^\s]|^[^\s]*\s*\(([A-D])\)$/);
           if (letterMatch) {
-            studentOptionLetter = letterMatch[1] || letterMatch[2] || letterMatch[3];
+            studentOptionLetter = letterMatch[1] || letterMatch[2] || letterMatch[3] || letterMatch[4] || letterMatch[5];
+          }
+          
+          // If no letter found, try to match the actual text content with options
+          if (!studentOptionLetter && question.options) {
+            const matchingOption = question.options.find(option => {
+              const optionText = option.replace(/^[A-D]\.\s*/, '').trim();
+              return optionText === studentAnswer.trim();
+            });
+            if (matchingOption) {
+              const optionLetterMatch = matchingOption.match(/^([A-D])\./);
+              if (optionLetterMatch) {
+                studentOptionLetter = optionLetterMatch[1];
+              }
+            }
           }
         }
+        
+        // Debug logging
+        console.log(`MCQ Debug - Question ${question.number}:`, {
+          studentAnswer,
+          studentOptionLetter,
+          correctAnswer,
+          questionOptions: question.options
+        });
+        
         isCorrect = studentOptionLetter && studentOptionLetter.toUpperCase() === correctAnswer.toUpperCase();
         evaluationDetails = { method: 'exact_match', studentOptionLetter, correctAnswer };
       } else if (question.type === 'true_false') {
@@ -785,12 +808,27 @@ const AssessmentReview = ({ assessment, studentAnswers, score, correctAnswers, t
         // For MCQ, extract the option letter from student answer and compare with correct answer
         let studentOptionLetter = '';
         if (studentAnswer) {
-          // Extract letter from format like "A. text" or "text (A)" or just "A"
-          const letterMatch = studentAnswer.match(/^([A-D])\.|\(([A-D])\)$|^([A-D])$/);
+          // Extract letter from format like "A. text" or "text (A)" or just "A" or "الخلايا" (Arabic text)
+          const letterMatch = studentAnswer.match(/^([A-D])\.|\(([A-D])\)$|^([A-D])$|^([A-D])\.\s*[^\s]|^[^\s]*\s*\(([A-D])\)$/);
           if (letterMatch) {
-            studentOptionLetter = letterMatch[1] || letterMatch[2] || letterMatch[3];
+            studentOptionLetter = letterMatch[1] || letterMatch[2] || letterMatch[3] || letterMatch[4] || letterMatch[5];
+          }
+          
+          // If no letter found, try to match the actual text content with options
+          if (!studentOptionLetter && question.options) {
+            const matchingOption = question.options.find(option => {
+              const optionText = option.replace(/^[A-D]\.\s*/, '').trim();
+              return optionText === studentAnswer.trim();
+            });
+            if (matchingOption) {
+              const optionLetterMatch = matchingOption.match(/^([A-D])\./);
+              if (optionLetterMatch) {
+                studentOptionLetter = optionLetterMatch[1];
+              }
+            }
           }
         }
+        
         isCorrect = studentOptionLetter && studentOptionLetter.toUpperCase() === correctAnswer.toUpperCase();
         evaluationDetails = { method: 'exact_match_fallback', studentOptionLetter, correctAnswer };
       } else if (question.type === 'true_false') {

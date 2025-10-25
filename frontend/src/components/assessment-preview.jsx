@@ -277,10 +277,24 @@ export default function AssessmentPreview({
         let studentOptionLetter = '';
         if (studentAnswer !== undefined && studentAnswer !== null) {
           const studentAnswerStr = studentAnswer.toString();
-          // Extract letter from format like "A. text" or "text (A)" or just "A"
-          const letterMatch = studentAnswerStr.match(/^([A-D])\.|\(([A-D])\)$|^([A-D])$/);
+          // Extract letter from format like "A. text" or "text (A)" or just "A" or "الخلايا" (Arabic text)
+          const letterMatch = studentAnswerStr.match(/^([A-D])\.|\(([A-D])\)$|^([A-D])$|^([A-D])\.\s*[^\s]|^[^\s]*\s*\(([A-D])\)$/);
           if (letterMatch) {
-            studentOptionLetter = letterMatch[1] || letterMatch[2] || letterMatch[3];
+            studentOptionLetter = letterMatch[1] || letterMatch[2] || letterMatch[3] || letterMatch[4] || letterMatch[5];
+          }
+          
+          // If no letter found, try to match the actual text content with options
+          if (!studentOptionLetter && question.options) {
+            const matchingOption = question.options.find(option => {
+              const optionText = option.replace(/^[A-D]\.\s*/, '').trim();
+              return optionText === studentAnswerStr.trim();
+            });
+            if (matchingOption) {
+              const optionLetterMatch = matchingOption.match(/^([A-D])\./);
+              if (optionLetterMatch) {
+                studentOptionLetter = optionLetterMatch[1];
+              }
+            }
           }
         }
         isCorrect = studentOptionLetter && correctAnswer && 

@@ -102,7 +102,9 @@ export default function HistoryClient({ initialConversations, initialStats, init
   const filteredConversations = conversations.filter(conv =>
     conv.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     conv.lastMessage.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    conv.sessionId.toLowerCase().includes(searchTerm.toLowerCase())
+    conv.sessionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    conv.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    conv.userEmail.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Get session type icon
