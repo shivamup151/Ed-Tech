@@ -181,7 +181,10 @@ export async function addStudentFeedback(studentId, feedbackData) {
 
     const { db } = await connectToDatabase();
     
-    // Create feedback object with metadata
+    // Create feedback object with metadata and TTL
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000)); // 3 days from now
+    
     const feedback = {
       id: `feedback_${Date.now()}`,
       teacherId: session.user.id,
@@ -192,7 +195,8 @@ export async function addStudentFeedback(studentId, feedbackData) {
       strengths: feedbackData.strengths || [],
       improvements: feedbackData.improvements || [],
       priority: feedbackData.priority || 'medium',
-      createdAt: new Date(),
+      createdAt: now,
+      expiresAt: expiresAt, // TTL field for automatic deletion
       isActive: true
     };
     
@@ -228,7 +232,22 @@ export async function getStudentFeedback(studentId) {
 
     const { db } = await connectToDatabase();
     
-    // Get student with feedback
+    // Create TTL index for automatic deletion if it doesn't exist
+    try {
+      await db.collection('user').createIndex(
+        { "feedback.expiresAt": 1 },
+        { 
+          name: "feedback_ttl_index",
+          expireAfterSeconds: 0, // MongoDB will delete documents when expiresAt field is reached
+          partialFilterExpression: { "feedback.expiresAt": { $exists: true } }
+        }
+      );
+    } catch (indexError) {
+      // Index might already exist, continue
+      console.log("TTL index creation skipped (might already exist):", indexError.message);
+    }
+    
+    // Get student with feedback, filtering out expired feedback
     const student = await db.collection('user').findOne(
       { _id: new ObjectId(studentId) },
       { projection: { feedback: 1, name: 1, email: 1 } }
@@ -241,9 +260,26 @@ export async function getStudentFeedback(studentId) {
       };
     }
     
+    // Filter out expired feedback
+    const now = new Date();
+    const activeFeedback = (student.feedback || []).filter(feedback => {
+      return !feedback.expiresAt || new Date(feedback.expiresAt) > now;
+    });
+    
+    // Clean up expired feedback from database
+    if (activeFeedback.length !== (student.feedback || []).length) {
+      await db.collection('user').updateOne(
+        { _id: new ObjectId(studentId) },
+        { 
+          $set: { feedback: activeFeedback },
+          $set: { updatedAt: new Date() }
+        }
+      );
+    }
+    
     return {
       success: true,
-      feedback: student.feedback || [],
+      feedback: activeFeedback,
       student: {
         name: student.name,
         email: student.email

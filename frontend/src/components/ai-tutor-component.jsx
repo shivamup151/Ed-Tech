@@ -126,9 +126,9 @@ const AiTutor = () => {
     const [dataLoading, setDataLoading] = useState(true);
 
     // NEW: Teacher feedback state
-    const [teacherFeedback, setTeacherFeedback] = useState(null);
+    const [teacherFeedback, setTeacherFeedback] = useState([]);
     const [showFeedbackOption, setShowFeedbackOption] = useState(false);
-    const [useFeedbackSession, setUseFeedbackSession] = useState(false);
+    const [selectedFeedbackId, setSelectedFeedbackId] = useState('');
 
     // NEW: Add subjects state
     const [availableSubjects, setAvailableSubjects] = useState([]);
@@ -455,8 +455,8 @@ const AiTutor = () => {
                 lessons: studentData.lessons || [],
                 resources: studentData.resources || [],
                 analytics: studentData.analytics || [],
-                // NEW: Include teacher feedback if user chose to use it
-                teacher_feedback: useFeedbackSession ? teacherFeedback : null
+                // NEW: Include selected teacher feedback (wrapped in array as expected by backend)
+                teacher_feedback: selectedFeedbackId && selectedFeedbackId !== 'none' ? [teacherFeedback.find(f => f.id === selectedFeedbackId)] : []
             };
 
             // Make direct fetch request to Python backend for streaming
@@ -470,7 +470,7 @@ const AiTutor = () => {
                 web_search_enabled: true,
                 student_data: enhancedStudentData,
                 uploaded_files: uploadedFiles.map(f => f.name), // Just file names, not objects
-                use_feedback: useFeedbackSession,
+                use_feedback: selectedFeedbackId && selectedFeedbackId !== 'none',
             };
 
             console.log('Sending payload to Python backend:', payload);
@@ -1023,9 +1023,9 @@ Exported on: ${new Date().toLocaleDateString()}\\par\\par`;
                 uploadedFiles: uploadedFiles.map(f => f.name),
                 conversationHistory: messages.slice(-10), // Last 10 messages for context
                 
-                // NEW: Include teacher feedback if user chose to use it
-                teacher_feedback: useFeedbackSession ? teacherFeedback : null,
-                use_feedback: useFeedbackSession,
+                // NEW: Include selected teacher feedback (wrapped in array as expected by backend)
+                teacher_feedback: selectedFeedbackId && selectedFeedbackId !== 'none' ? [teacherFeedback.find(f => f.id === selectedFeedbackId)] : [],
+                use_feedback: selectedFeedbackId && selectedFeedbackId !== 'none',
                 
                 // NEW: Include voice gender selection
                 voiceGender: selectedVoiceGender
@@ -1194,19 +1194,36 @@ Exported on: ${new Date().toLocaleDateString()}\\par\\par`;
                                     </Select>
                                 </div>
                                 
-                                {/* NEW: Feedback Session Toggle */}
+                                {/* NEW: Feedback Selection Dropdown */}
                                 {showFeedbackOption && teacherFeedback && teacherFeedback.length > 0 && (
-                                    <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg">
-                                        <label className="text-sm font-medium flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={useFeedbackSession}
-                                                onChange={(e) => setUseFeedbackSession(e.target.checked)}
-                                                className="rounded"
-                                            />
+                                    <div className="w-full">
+                                        <label htmlFor="feedbackSelect" className="block text-sm font-medium mb-2 flex items-center gap-2">
                                             <MessageSquare className="h-4 w-4" />
-                                            Use Teacher Feedback ({teacherFeedback.length})
+                                            Select Teacher Feedback ({teacherFeedback.length} available)
                                         </label>
+                                        <Select value={selectedFeedbackId} onValueChange={setSelectedFeedbackId}>
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue placeholder="Choose feedback to use..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none">No feedback</SelectItem>
+                                                {teacherFeedback.map((feedback) => (
+                                                    <SelectItem key={feedback.id} value={feedback.id}>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm">
+                                                                {feedback.priority === 'high' ? '🔴' : feedback.priority === 'medium' ? '🟡' : '🟢'}
+                                                            </span>
+                                                            <span className="font-medium text-sm truncate">
+                                                                {feedback.topics && feedback.topics.length > 0 
+                                                                    ? feedback.topics[0] 
+                                                                    : `Feedback ${feedback.id.slice(-4)}`
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 )}
                                 

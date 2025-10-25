@@ -836,6 +836,17 @@ class TeacherAsyncRAGTutor:
                     }
                 }
                 
+                # Add selected teacher feedback if provided
+                if filtered_teaching_data.get("teacher_feedback"):
+                    formatted_teaching_data["selected_feedback"] = {
+                        "message": filtered_teaching_data["teacher_feedback"].get("message", ""),
+                        "topics": filtered_teaching_data["teacher_feedback"].get("topics", []),
+                        "focus_areas": filtered_teaching_data["teacher_feedback"].get("focusAreas", []),
+                        "strengths": filtered_teaching_data["teacher_feedback"].get("strengths", []),
+                        "improvements": filtered_teaching_data["teacher_feedback"].get("improvements", []),
+                        "priority": filtered_teaching_data["teacher_feedback"].get("priority", "medium")
+                    }
+                
                 teaching_data_str = json.dumps(formatted_teaching_data, indent=2)
             except TypeError:
                 teaching_data_str = str(teaching_data)
