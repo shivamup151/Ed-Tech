@@ -57,7 +57,7 @@ export async function getAllConversations(page = 1, limit = 10) {
       .toArray();
 
     // Get teacher conversations with pagination
-    const teacherConversations = await db.collection('teacherConversations')
+    const teacherConversations = await db.collection('teacher_conversations')
       .find({})
       .sort({ updatedAt: -1, createdAt: -1 })
       .skip((page - 1) * limit)
@@ -143,7 +143,7 @@ export async function getAllConversations(page = 1, limit = 10) {
 
     // Get total counts for pagination
     const totalStudentCount = await db.collection('student_conversations').countDocuments({});
-    const totalTeacherCount = await db.collection('teacherConversations').countDocuments({});
+    const totalTeacherCount = await db.collection('teacher_conversations').countDocuments({});
     const totalCount = totalStudentCount + totalTeacherCount;
 
     // Combine and sort all conversations
@@ -193,7 +193,7 @@ export async function getConversationsByType(formData) {
       return result;
     } else if (type === 'teacher') {
       // Get only teacher conversations
-      const teacherConversations = await db.collection('teacherConversations')
+      const teacherConversations = await db.collection('teacher_conversations')
         .find({})
         .sort({ updatedAt: -1, createdAt: -1 })
         .skip((page - 1) * limit)
@@ -245,7 +245,7 @@ export async function getConversationsByType(formData) {
       });
 
       // Get total count for teacher conversations
-      const totalCount = await db.collection('teacherConversations').countDocuments({});
+      const totalCount = await db.collection('teacher_conversations').countDocuments({});
     } else if (type === 'student') {
       // Get only student conversations
       const studentConversations = await db.collection('student_conversations')
@@ -349,7 +349,7 @@ export async function getAdminConversationStats() {
     ]).toArray();
 
     // Get teacher conversation stats
-    const teacherStats = await db.collection('teacherConversations').aggregate([
+    const teacherStats = await db.collection('teacher_conversations').aggregate([
       {
         $group: {
           _id: null,
@@ -423,7 +423,7 @@ export async function getConversationDetails(formData) {
       conversation = await db.collection('student_conversations')
         .findOne({ _id: new ObjectId(conversationId) });
     } else if (conversationType === 'teacher') {
-      conversation = await db.collection('teacherConversations')
+      conversation = await db.collection('teacher_conversations')
         .findOne({ _id: new ObjectId(conversationId) });
     }
 

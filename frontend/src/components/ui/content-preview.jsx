@@ -14,6 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FileText, Download, Copy, Check, Edit, Save, X, ExternalLink, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
+import { InlineMath, BlockMath } from 'react-katex';
+import 'katex/dist/katex.min.css';
 import { generateDOCX, generateMarkdown } from "@/lib/pdf-utils";
 
 export default function ContentPreview({
@@ -86,8 +89,131 @@ export default function ContentPreview({
 
   const contentData = getContentData();
 
+  // Custom components for ReactMarkdown to handle LaTeX
+  const customComponents = {
+    // Handle div elements with LaTeX content
+    div: ({ children, className, ...props }) => {
+      if (className === 'katex-block') {
+        try {
+          return <BlockMath math={children} />;
+        } catch (error) {
+          console.warn('LaTeX block rendering error:', error);
+          return <div className="katex-error">LaTeX Error: {children}</div>;
+        }
+      }
+      return <div className={className} {...props}>{children}</div>;
+    },
+    // Handle span elements with LaTeX content
+    span: ({ children, className, ...props }) => {
+      if (className === 'katex-inline') {
+        try {
+          return <InlineMath math={children} />;
+        } catch (error) {
+          console.warn('LaTeX inline rendering error:', error);
+          return <span className="katex-error">LaTeX Error: {children}</span>;
+        }
+      }
+      return <span className={className} {...props}>{children}</span>;
+    },
+    // Handle paragraph elements that might contain LaTeX
+    p: ({ children, ...props }) => {
+      const text = typeof children === 'string' ? children : children?.toString() || '';
+      
+      // Check if paragraph contains LaTeX expressions
+      if (containsLatex(text)) {
+        // Split by LaTeX expressions and render appropriately
+        const parts = text.split(/(\\[a-zA-Z]+|\\[(){}[\]]|\\frac|\\int|\\sum|\\prod|\\sqrt|\\left|\\right|\\begin|\\end)/g);
+        
+        return (
+          <p {...props}>
+            {parts.map((part, index) => {
+              if (containsLatex(part)) {
+                try {
+                  return <InlineMath key={index} math={part} />;
+                } catch (error) {
+                  console.warn('LaTeX inline rendering error:', error);
+                  return <span key={index} className="katex-error">LaTeX Error: {part}</span>;
+                }
+              }
+              return part;
+            })}
+          </p>
+        );
+      }
+      
+      return <p {...props}>{children}</p>;
+    }
+  };
+
+  // Helper function to detect if content contains HTML tags
+  const containsHtml = (text) => {
+    return /<[^>]*>/g.test(text);
+  };
+
+  // Helper function to detect LaTeX expressions
+  const containsLatex = (text) => {
+    if (!text || typeof text !== 'string') return false;
+    return /\\[a-zA-Z]+|\\[(){}[\]]|\\frac|\\int|\\sum|\\prod|\\sqrt|\\left|\\right|\\begin|\\end|\\alpha|\\beta|\\gamma|\\delta|\\epsilon|\\theta|\\lambda|\\mu|\\pi|\\sigma|\\tau|\\phi|\\omega|\\infty|\\pm|\\mp|\\times|\\div|\\leq|\\geq|\\neq|\\approx|\\equiv|\\subset|\\supset|\\in|\\notin|\\cup|\\cap|\\emptyset|\\rightarrow|\\leftarrow|\\leftrightarrow|\\Rightarrow|\\Leftarrow|\\Leftrightarrow/g.test(text);
+  };
+
+  // Helper function to process content for proper rendering
+  const processContent = (content) => {
+    if (!content) return content;
+    
+    // If content contains HTML tags, ensure proper formatting
+    if (containsHtml(content)) {
+      // Clean up any malformed HTML and ensure proper structure
+      return content
+        .replace(/<div dir="rtl">/g, '<div dir="rtl" style="direction: rtl; text-align: right;">')
+        .replace(/<div dir="ltr">/g, '<div dir="ltr" style="direction: ltr; text-align: left;">');
+    }
+    
+    return content;
+  };
+
+  // Helper function to render LaTeX expressions
+  const renderLatexContent = (content) => {
+    if (!content) return content;
+    
+    // Split content by LaTeX expressions and render them
+    const latexRegex = /\\[a-zA-Z]+|\\[(){}[\]]|\\frac|\\int|\\sum|\\prod|\\sqrt|\\left|\\right|\\begin|\\end/g;
+    const parts = content.split(latexRegex);
+    const matches = content.match(latexRegex);
+    
+    if (!matches) return content;
+    
+    // Find LaTeX blocks (between $$ or $)
+    const latexBlockRegex = /\$\$([^$]+)\$\$/g;
+    const inlineLatexRegex = /\$([^$]+)\$/g;
+    
+    let processedContent = content;
+    
+    // Process block LaTeX ($$...$$)
+    processedContent = processedContent.replace(latexBlockRegex, (match, latex) => {
+      try {
+        return `<div class="katex-block">${latex}</div>`;
+      } catch (error) {
+        console.warn('LaTeX block rendering error:', error);
+        return match;
+      }
+    });
+    
+    // Process inline LaTeX ($...$)
+    processedContent = processedContent.replace(inlineLatexRegex, (match, latex) => {
+      try {
+        return `<span class="katex-inline">${latex}</span>`;
+      } catch (error) {
+        console.warn('LaTeX inline rendering error:', error);
+        return match;
+      }
+    });
+    
+    return processedContent;
+  };
+
   const handleCopyContent = async () => {
     try {
+      // For copying, we want the raw content without LaTeX processing
       await navigator.clipboard.writeText(contentData.content);
       setCopied(true);
       toast.success("Content copied to clipboard!");
@@ -106,7 +232,7 @@ export default function ContentPreview({
     setIsDownloading(true);
     const filename = metadata?.topic || 'content';
     const contentData = {
-      content: editedContent || content,
+      content: editedContent || content, // Use raw content for download
       metadata: metadata || {}
     };
 
@@ -214,6 +340,23 @@ export default function ContentPreview({
 
   return (
     <>
+      <style jsx>{`
+        .katex-error {
+          color: #ef4444;
+          background-color: #fef2f2;
+          padding: 2px 4px;
+          border-radius: 4px;
+          font-family: monospace;
+          font-size: 0.875rem;
+        }
+        .katex-block {
+          margin: 1rem 0;
+          text-align: center;
+        }
+        .katex-inline {
+          display: inline;
+        }
+      `}</style>
       <Card className="w-full dark:bg-secondary">
         <CardHeader>
           <div className="flex justify-between items-start">
@@ -343,9 +486,13 @@ export default function ContentPreview({
                   >
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
-                      components={MarkdownStyles}
+                      rehypePlugins={[rehypeRaw]}
+                      components={{
+                        ...MarkdownStyles,
+                        ...customComponents
+                      }}
                     >
-                      {contentData.content}
+                      {renderLatexContent(processContent(contentData.content))}
                     </ReactMarkdown>
                   </div>
                 ) : (

@@ -90,7 +90,7 @@ export const getTeacherDashboardData = cache(async () => {
     const [user, conversations, contents, presentations, comics, images, videos, assessments, webSearches] = await Promise.all([
       db.collection('user').findOne({ _id: userId }),
       
-      db.collection('teacherConversations')
+      db.collection('teacher_conversations')
         .find({ 
           $or: [
             { sessionId: { $regex: `voice_coach_${userId}_`, $options: 'i' } },
@@ -161,7 +161,7 @@ export const getTeacherDashboardData = cache(async () => {
       recentActivity,
       todayActivity
     ] = await Promise.all([
-      db.collection('teacherConversations')
+      db.collection('teacher_conversations')
         .countDocuments({ 
           $or: [
             { sessionId: { $regex: `voice_coach_${userId}_`, $options: 'i' } },
@@ -177,7 +177,7 @@ export const getTeacherDashboardData = cache(async () => {
       db.collection('websearches').countDocuments({ userId: userId }),
       
       // Recent activity (last 7 days)
-      db.collection('teacherConversations')
+      db.collection('teacher_conversations')
         .countDocuments({
           $or: [
             { sessionId: { $regex: `voice_coach_${userId}_`, $options: 'i' } },
@@ -193,7 +193,7 @@ export const getTeacherDashboardData = cache(async () => {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         
-        return db.collection('teacherConversations')
+        return db.collection('teacher_conversations')
           .countDocuments({
             $or: [
               { sessionId: { $regex: `voice_coach_${userId}_`, $options: 'i' } },
@@ -331,7 +331,7 @@ export const getTeacherDashboardData = cache(async () => {
     weekAgo.setDate(weekAgo.getDate() - 6);
     weekAgo.setHours(0, 0, 0, 0);
     
-    const weeklyActivityResults = await db.collection('teacherConversations').aggregate([
+    const weeklyActivityResults = await db.collection('teacher_conversations').aggregate([
       {
         $match: {
           $or: [
