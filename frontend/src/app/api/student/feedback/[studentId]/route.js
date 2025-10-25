@@ -15,6 +15,21 @@ export async function GET(request, { params }) {
 
     const { db } = await connectToDatabase();
     
+    // Create TTL index for automatic deletion if it doesn't exist
+    try {
+      await db.collection('user').createIndex(
+        { "feedback.expiresAt": 1 },
+        { 
+          name: "feedback_ttl_index",
+          expireAfterSeconds: 0, // MongoDB will delete documents when expiresAt field is reached
+          partialFilterExpression: { "feedback.expiresAt": { $exists: true } }
+        }
+      );
+    } catch (indexError) {
+      // Index might already exist, continue
+      console.log("TTL index creation skipped (might already exist):", indexError.message);
+    }
+    
     const student = await db.collection('user').findOne(
       { _id: new ObjectId(studentId) },
       { projection: { feedback: 1 } }
@@ -27,7 +42,34 @@ export async function GET(request, { params }) {
       );
     }
 
-    const activeFeedback = (student.feedback || []).filter(fb => fb.isActive);
+    // Filter out expired feedback and create previews
+    const now = new Date();
+    const activeFeedback = (student.feedback || [])
+      .filter(fb => {
+        return fb.isActive && (!fb.expiresAt || new Date(fb.expiresAt) > now);
+      })
+      .map(fb => {
+        // Create preview (2-3 sentences)
+        const sentences = fb.message.split(/[.!?]+/).filter(s => s.trim().length > 0);
+        const preview = sentences.slice(0, 2).join('. ').trim();
+        const finalPreview = preview.endsWith('.') ? preview : preview + '.';
+        
+        return {
+          ...fb,
+          preview: finalPreview
+        };
+      });
+
+    // Clean up expired feedback from database
+    if (activeFeedback.length !== (student.feedback || []).length) {
+      await db.collection('user').updateOne(
+        { _id: new ObjectId(studentId) },
+        { 
+          $set: { feedback: activeFeedback },
+          $set: { updatedAt: new Date() }
+        }
+      );
+    }
 
     return NextResponse.json({
       success: true,

@@ -276,7 +276,9 @@ export async function sendAITutorMessage(formData) {
       assessments: studentData.assessments || [],
       lessons: studentData.lessons || [],
       resources: studentData.resources || [],
-      analytics: studentData.analytics || []
+      analytics: studentData.analytics || [],
+      // NEW: Include selected teacher feedback (as array for backend compatibility)
+      teacher_feedback: studentData.teacher_feedback || []
     };
 
     const pythonApi = new PythonApi();
