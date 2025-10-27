@@ -348,11 +348,11 @@ const VoiceCoach = () => {
                     avatar: <GraduationCap className="w-4 h-4 text-blue-500" />
                 };
 
-                // FIXED: Update messages and save conversation immediately
+                // Update messages and save conversation
                 setMessages(prev => {
                     const updatedMessages = [...prev, aiMessage];
                     
-                    // FIXED: Save conversation immediately after adding AI message
+                    // Save conversation after state update
                     setTimeout(async () => {
                         try {
                             console.log('Saving voice coach conversation with sessionId:', sessionId);
@@ -458,6 +458,17 @@ const VoiceCoach = () => {
                             isLive: false // Mark as complete
                         };
                     }
+                    
+                    // Save voice conversation after AI response is complete
+                    setTimeout(async () => {
+                        try {
+                            console.log('Saving voice coach conversation after AI response with sessionId:', sessionId);
+                            await saveConversationToHistory(newMessages, 'voice');
+                        } catch (error) {
+                            console.error('Failed to save voice conversation:', error);
+                        }
+                    }, 100); // Small delay to ensure state is updated
+                    
                     return newMessages;
                 });
             };
@@ -966,15 +977,15 @@ Exported on: ${new Date().toLocaleDateString()}\\par\\par`;
         URL.revokeObjectURL(url);
     };
 
-    // Save conversation when component unmounts
+    // Cleanup on unmount - only clean up RealtimeOpenAI service
     useEffect(() => {
         return () => {
-            if (messages.length > 0 && sessionId) {
-                console.log('Component unmounting, saving conversation...');
-                saveConversationToHistory(messages, 'text');
+            // Clean up RealtimeOpenAI service on unmount
+            if (openAIServiceRef.current) {
+                openAIServiceRef.current.disconnect();
             }
         };
-    }, [messages, sessionId]);
+    }, []);
 
     // NEW: Add conversation saving function for Voice Coach
     const saveConversationToHistory = async (messagesToSave, sessionType = 'text') => {

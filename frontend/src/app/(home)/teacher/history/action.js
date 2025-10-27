@@ -720,7 +720,7 @@ export async function saveTeacherConversation(formData) {
     
     return { 
       success: true, 
-      conversationId: result.insertedId || existingConversation?._id,
+      conversationId: result.insertedId?.toString() || existingConversation?._id?.toString(),
       message: existingConversation ? 'Conversation updated successfully' : 'Conversation saved successfully'
     };
 
