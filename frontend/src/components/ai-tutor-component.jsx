@@ -768,7 +768,11 @@ const AiTutor = () => {
         }
         
         return (
-            <div className="prose prose-sm max-w-none dark:prose-invert">
+            <div 
+                className="prose prose-sm max-w-none dark:prose-invert"
+                dir={/[\u0600-\u06FF\u0750-\u077F]/.test(content) ? 'rtl' : 'ltr'}
+                style={/[\u0600-\u06FF\u0750-\u077F]/.test(content) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+            >
                 <ReactMarkdown 
                     remarkPlugins={[remarkGfm, remarkMath]} 
                     rehypePlugins={[rehypeKatex, rehypeRaw]} 
@@ -787,7 +791,11 @@ const AiTutor = () => {
         } else {
             return (
                 <div className="relative group">
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <div 
+                        className="prose prose-sm max-w-none dark:prose-invert"
+                        dir={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? 'rtl' : 'ltr'}
+                        style={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+                    >
                         <ReactMarkdown 
                             remarkPlugins={[remarkGfm, remarkMath]} 
                             rehypePlugins={[rehypeKatex, rehypeRaw]} 

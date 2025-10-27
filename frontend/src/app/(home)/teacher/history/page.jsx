@@ -417,12 +417,33 @@ Current page conversations: ${result.data.conversations.length}
                                       <Bot className="w-3 h-3 text-gray-600 dark:text-gray-400" />
                                     )}
                                   </div>
-                                  <p className="text-gray-600 dark:text-gray-400 truncate">
-                                    {message.content.length > 100 
-                                      ? message.content.substring(0, 100) + '...'
-                                      : message.content
-                                    }
-                                  </p>
+                                  <div 
+                                    className="text-gray-600 dark:text-gray-400 truncate"
+                                    dir={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? 'rtl' : 'ltr'}
+                                    style={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+                                  >
+                                    {message.role === 'user' ? (
+                                      <p>
+                                        {message.content.length > 100 
+                                          ? message.content.substring(0, 100) + '...'
+                                          : message.content
+                                        }
+                                      </p>
+                                    ) : (
+                                      <div className="prose prose-xs max-w-none dark:prose-invert">
+                                        <ReactMarkdown
+                                          remarkPlugins={[remarkGfm, remarkMath]}
+                                          rehypePlugins={[rehypeKatex, rehypeRaw]}
+                                          components={MarkdownStyles}
+                                        >
+                                          {message.content.length > 100 
+                                            ? message.content.substring(0, 100) + '...'
+                                            : message.content
+                                          }
+                                        </ReactMarkdown>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                             </div>

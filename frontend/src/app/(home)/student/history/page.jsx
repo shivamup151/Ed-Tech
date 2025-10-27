@@ -26,6 +26,13 @@ import {
     X // Add this import
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
+import 'katex/dist/katex.min.css';
+import { MarkdownStyles } from '@/components/Markdown';
 import { 
     getStudentConversations, 
     getConversationById, 
@@ -364,12 +371,33 @@ const StudentHistory = () => {
                                                                             <Bot className="w-3 h-3 text-gray-600 dark:text-gray-400" />
                                                                         )}
                                                                     </div>
-                                                                    <p className="text-gray-600 dark:text-gray-400 truncate">
-                                                                        {message.content.length > 100 
-                                                                            ? message.content.substring(0, 100) + '...'
-                                                                            : message.content
-                                                                        }
-                                                                    </p>
+                                                                    <div 
+                                                                        className="text-gray-600 dark:text-gray-400 truncate"
+                                                                        dir={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? 'rtl' : 'ltr'}
+                                                                        style={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+                                                                    >
+                                                                        {message.role === 'user' ? (
+                                                                            <p>
+                                                                                {message.content.length > 100 
+                                                                                    ? message.content.substring(0, 100) + '...'
+                                                                                    : message.content
+                                                                                }
+                                                                            </p>
+                                                                        ) : (
+                                                                            <div className="prose prose-xs max-w-none dark:prose-invert">
+                                                                                <ReactMarkdown
+                                                                                    remarkPlugins={[remarkGfm, remarkMath]}
+                                                                                    rehypePlugins={[rehypeKatex, rehypeRaw]}
+                                                                                    components={MarkdownStyles}
+                                                                                >
+                                                                                    {message.content.length > 100 
+                                                                                        ? message.content.substring(0, 100) + '...'
+                                                                                        : message.content
+                                                                                    }
+                                                                                </ReactMarkdown>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -473,8 +501,22 @@ const StudentHistory = () => {
                                                 ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
                                                 : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
                                             }`}>
-                                                <div className="text-sm whitespace-pre-wrap">
-                                                    {message.content}
+                                                <div 
+                                                    className="text-sm"
+                                                    dir={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? 'rtl' : 'ltr'}
+                                                    style={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+                                                >
+                                                    {message.role === 'user' ? (
+                                                        <div className="whitespace-pre-wrap">{message.content}</div>
+                                                    ) : (
+                                                        <ReactMarkdown
+                                                            remarkPlugins={[remarkGfm, remarkMath]}
+                                                            rehypePlugins={[rehypeKatex, rehypeRaw]}
+                                                            components={MarkdownStyles}
+                                                        >
+                                                            {message.content}
+                                                        </ReactMarkdown>
+                                                    )}
                                                 </div>
                                                 <div className={`text-xs mt-2 ${message.role === 'user' 
                                                     ? 'text-purple-100' 
