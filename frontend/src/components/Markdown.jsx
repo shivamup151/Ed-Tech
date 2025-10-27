@@ -6,6 +6,42 @@ import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
 
+// Add RTL support for LaTeX equations
+const rtlLatexStyles = `
+  /* RTL support for LaTeX equations */
+  [dir="rtl"] .katex {
+    direction: rtl !important;
+    text-align: right !important;
+  }
+  
+  [dir="rtl"] .katex-display {
+    direction: rtl !important;
+    text-align: right !important;
+  }
+  
+  [dir="rtl"] .katex .base {
+    direction: rtl !important;
+  }
+  
+  [dir="rtl"] .katex .mord {
+    direction: rtl !important;
+  }
+  
+  /* Ensure math equations in RTL containers are right-aligned */
+  .prose[dir="rtl"] .katex,
+  .prose[dir="rtl"] .katex-display {
+    direction: rtl !important;
+    text-align: right !important;
+  }
+`;
+
+// Inject the styles
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = rtlLatexStyles;
+  document.head.appendChild(styleSheet);
+}
+
 // Arabic text detection utility
 const detectArabic = (text) => {
   if (!text || typeof text !== 'string') return false;
@@ -423,4 +459,75 @@ export const MarkdownStyles = {
       {...props}
     />
   ),
+
+  // LaTeX math with RTL support
+  span: ({ node, className, children, ...props }) => {
+    // Check if this is a KaTeX span (LaTeX equation)
+    if (className && className.includes('katex')) {
+      // Check if parent has RTL direction
+      const parentElement = node?.parent;
+      const hasRTLParent = parentElement && (
+        parentElement.properties?.dir === 'rtl' ||
+        parentElement.properties?.style?.direction === 'rtl'
+      );
+      
+      // Check if content contains Arabic text
+      const textContent = React.Children.toArray(children).join('');
+      const hasArabic = detectArabic(textContent);
+      
+      if (hasRTLParent || hasArabic) {
+        return (
+          <span 
+            className={className}
+            style={{ 
+              direction: 'rtl', 
+              textAlign: 'right',
+              display: 'inline-block',
+              unicodeBidi: 'embed'
+            }}
+            {...props}
+          >
+            {children}
+          </span>
+        );
+      }
+    }
+    
+    return <span className={className} {...props}>{children}</span>;
+  },
+
+  // Math display blocks with RTL support
+  div: ({ node, className, children, ...props }) => {
+    // Check if this is a KaTeX display block
+    if (className && className.includes('katex-display')) {
+      // Check if parent has RTL direction
+      const parentElement = node?.parent;
+      const hasRTLParent = parentElement && (
+        parentElement.properties?.dir === 'rtl' ||
+        parentElement.properties?.style?.direction === 'rtl'
+      );
+      
+      // Check if content contains Arabic text
+      const textContent = React.Children.toArray(children).join('');
+      const hasArabic = detectArabic(textContent);
+      
+      if (hasRTLParent || hasArabic) {
+        return (
+          <div 
+            className={className}
+            style={{ 
+              direction: 'rtl', 
+              textAlign: 'right',
+              unicodeBidi: 'embed'
+            }}
+            {...props}
+          >
+            {children}
+          </div>
+        );
+      }
+    }
+    
+    return <div className={className} {...props}>{children}</div>;
+  },
 };
