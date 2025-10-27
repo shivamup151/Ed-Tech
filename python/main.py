@@ -503,7 +503,7 @@ class TeachingContentSchema(BaseModel):
     )
     # Add language parameter
     language: str = Field(
-        "English",
+        default="English",
         description="The language for the content (e.g., English, Arabic)."
     )
     # Add session fields for lesson plans
