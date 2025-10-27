@@ -401,20 +401,34 @@ const InteractiveAssessment = ({ assessment, onAnswerChange, studentAnswers, onS
         // For MCQ, extract the option letter from student answer and compare with correct answer
         let studentOptionLetter = '';
         if (studentAnswer) {
-          // Extract letter from format like "A. text" or "text (A)" or just "A" or "الخلايا" (Arabic text)
-          const letterMatch = studentAnswer.match(/^([A-D])\.|\(([A-D])\)$|^([A-D])$|^([A-D])\.\s*[^\s]|^[^\s]*\s*\(([A-D])\)$/);
-          if (letterMatch) {
-            studentOptionLetter = letterMatch[1] || letterMatch[2] || letterMatch[3] || letterMatch[4] || letterMatch[5];
+          // Enhanced letter extraction with more patterns
+          const letterPatterns = [
+            /^([A-D])\./,           // A. text
+            /^([A-D])\s/,           // A text
+            /^([A-D])\)/,           // A) text
+            /^([A-D]):/,            // A: text
+            /\(([A-D])\)/,          // text (A)
+            /^([A-D])$/,            // just A
+            /^([A-D])\.\s*$/,       // A. (with optional spaces)
+            /^([A-D])\s*$/,         // A (with optional spaces)
+          ];
+          
+          for (const pattern of letterPatterns) {
+            const match = studentAnswer.match(pattern);
+            if (match) {
+              studentOptionLetter = match[1];
+              break;
+            }
           }
           
           // If no letter found, try to match the actual text content with options
           if (!studentOptionLetter && question.options) {
             const matchingOption = question.options.find(option => {
-              const optionText = option.replace(/^[A-D]\.\s*/, '').trim();
-              return optionText === studentAnswer.trim();
+              const optionText = option.replace(/^[A-D][\.\)\:\s]*/, '').trim();
+              return optionText.toLowerCase() === studentAnswer.trim().toLowerCase();
             });
             if (matchingOption) {
-              const optionLetterMatch = matchingOption.match(/^([A-D])\./);
+              const optionLetterMatch = matchingOption.match(/^([A-D])/);
               if (optionLetterMatch) {
                 studentOptionLetter = optionLetterMatch[1];
               }
@@ -422,20 +436,65 @@ const InteractiveAssessment = ({ assessment, onAnswerChange, studentAnswers, onS
           }
         }
         
+        // Normalize correct answer - remove any extra formatting
+        const normalizedCorrectAnswer = correctAnswer.replace(/[^\w]/g, '').toUpperCase();
+        const normalizedStudentAnswer = studentOptionLetter ? studentOptionLetter.toUpperCase() : '';
+        
         // Debug logging
         console.log(`MCQ Debug - Question ${question.number}:`, {
           studentAnswer,
           studentOptionLetter,
           correctAnswer,
+          normalizedCorrectAnswer,
+          normalizedStudentAnswer,
           questionOptions: question.options
         });
         
-        isCorrect = studentOptionLetter && studentOptionLetter.toUpperCase() === correctAnswer.toUpperCase();
-        evaluationDetails = { method: 'exact_match', studentOptionLetter, correctAnswer };
+        isCorrect = normalizedStudentAnswer && normalizedStudentAnswer === normalizedCorrectAnswer;
+        evaluationDetails = { 
+          method: 'exact_match', 
+          studentOptionLetter: normalizedStudentAnswer, 
+          correctAnswer: normalizedCorrectAnswer,
+          originalStudentAnswer: studentAnswer,
+          originalCorrectAnswer: correctAnswer
+        };
       } else if (question.type === 'true_false') {
-        // For True/False, compare the boolean value
-        isCorrect = studentAnswer && studentAnswer.toLowerCase() === correctAnswer.toLowerCase();
-        evaluationDetails = { method: 'exact_match' };
+        // For True/False, compare with multiple variations
+        const normalizeTF = (answer) => {
+          if (!answer) return '';
+          return answer.toLowerCase().trim().replace(/[^\w]/g, '');
+        };
+        
+        const studentNormalized = normalizeTF(studentAnswer);
+        const correctNormalized = normalizeTF(correctAnswer);
+        
+        // Handle multiple variations
+        const trueVariations = ['true', 't', 'yes', 'y', 'correct', 'right', 'صحيح', 'صح'];
+        const falseVariations = ['false', 'f', 'no', 'n', 'incorrect', 'wrong', 'خاطئ', 'خطأ'];
+        
+        let studentBool = null;
+        let correctBool = null;
+        
+        if (trueVariations.includes(studentNormalized)) studentBool = true;
+        else if (falseVariations.includes(studentNormalized)) studentBool = false;
+        
+        if (trueVariations.includes(correctNormalized)) correctBool = true;
+        else if (falseVariations.includes(correctNormalized)) correctBool = false;
+        
+        isCorrect = studentBool !== null && correctBool !== null && studentBool === correctBool;
+        
+        // Fallback to direct comparison if boolean conversion failed
+        if (!isCorrect && studentBool === null && correctBool === null) {
+          isCorrect = studentNormalized === correctNormalized;
+        }
+        
+        evaluationDetails = { 
+          method: 'exact_match', 
+          studentNormalized, 
+          correctNormalized,
+          studentBool,
+          correctBool
+        };
       } else if (question.type === 'short_answer') {
         // For short answer, use semantic evaluation API
         try {
@@ -490,6 +549,14 @@ const InteractiveAssessment = ({ assessment, onAnswerChange, studentAnswers, onS
 
     const score = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
     
+    // Enhanced debug logging for score calculation
+    console.log('=== ASSESSMENT SCORE CALCULATION DEBUG ===');
+    console.log('Total Questions:', totalQuestions);
+    console.log('Correct Answers:', correctAnswers);
+    console.log('Calculated Score:', score);
+    console.log('Score Formula:', `(${correctAnswers} / ${totalQuestions}) * 100 = ${score}%`);
+    console.log('Evaluation Results:', evaluationResults);
+    console.log('==========================================');
     
     // Call the parent's onSubmit function with the calculated score
     if (onSubmit) {
