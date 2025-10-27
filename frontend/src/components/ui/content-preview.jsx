@@ -14,10 +14,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FileText, Download, Copy, Check, Edit, Save, X, ExternalLink, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
-import { InlineMath, BlockMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
 import { generateDOCX, generateMarkdown } from "@/lib/pdf-utils";
+import VideoPreview from "@/components/ui/video-preview";
 
 export default function ContentPreview({
   content,
@@ -32,7 +34,7 @@ export default function ContentPreview({
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
-  const [downloadFormat, setDownloadFormat] = useState('docx'); // Changed from 'pdf' to 'docx'
+  const [downloadFormat, setDownloadFormat] = useState('docx');
   const [isDownloading, setIsDownloading] = useState(false);
 
   // Handle different content structures
@@ -89,124 +91,60 @@ export default function ContentPreview({
 
   const contentData = getContentData();
 
-  // Custom components for ReactMarkdown to handle LaTeX
-  const customComponents = {
-    // Handle div elements with LaTeX content
-    div: ({ children, className, ...props }) => {
-      if (className === 'katex-block') {
-        try {
-          return <BlockMath math={children} />;
-        } catch (error) {
-          console.warn('LaTeX block rendering error:', error);
-          return <div className="katex-error">LaTeX Error: {children}</div>;
-        }
-      }
-      return <div className={className} {...props}>{children}</div>;
-    },
-    // Handle span elements with LaTeX content
-    span: ({ children, className, ...props }) => {
-      if (className === 'katex-inline') {
-        try {
-          return <InlineMath math={children} />;
-        } catch (error) {
-          console.warn('LaTeX inline rendering error:', error);
-          return <span className="katex-error">LaTeX Error: {children}</span>;
-        }
-      }
-      return <span className={className} {...props}>{children}</span>;
-    },
-    // Handle paragraph elements that might contain LaTeX
-    p: ({ children, ...props }) => {
-      const text = typeof children === 'string' ? children : children?.toString() || '';
-      
-      // Check if paragraph contains LaTeX expressions
-      if (containsLatex(text)) {
-        // Split by LaTeX expressions and render appropriately
-        const parts = text.split(/(\\[a-zA-Z]+|\\[(){}[\]]|\\frac|\\int|\\sum|\\prod|\\sqrt|\\left|\\right|\\begin|\\end)/g);
-        
-        return (
-          <p {...props}>
-            {parts.map((part, index) => {
-              if (containsLatex(part)) {
-                try {
-                  return <InlineMath key={index} math={part} />;
-                } catch (error) {
-                  console.warn('LaTeX inline rendering error:', error);
-                  return <span key={index} className="katex-error">LaTeX Error: {part}</span>;
-                }
-              }
-              return part;
-            })}
-          </p>
-        );
-      }
-      
-      return <p {...props}>{children}</p>;
-    }
-  };
+  // Handle video content type - use VideoPreview component
+  if (contentData.contentType === 'video' || contentType === 'video') {
+    return (
+      <VideoPreview
+        videoUrl={content?.videoUrl || content?.url || metadata?.videoUrl}
+        title={content?.title || metadata?.title || contentData.topic}
+        slidesCount={content?.slidesCount || metadata?.slidesCount}
+        status="completed"
+        voiceName={content?.voiceName || metadata?.voiceName}
+        avatarName={content?.talkingPhotoName || metadata?.talkingPhotoName}
+        videoId={content?.videoId || metadata?.videoId}
+        isEditable={false}
+      />
+    );
+  }
+
+  // Check if content contains video URLs (for cases where video content comes as text)
+  const hasVideoUrl = content?.videoUrl || content?.url || metadata?.videoUrl;
+  if (hasVideoUrl && (contentData.contentType === 'content' || !contentData.contentType)) {
+    return (
+      <VideoPreview
+        videoUrl={hasVideoUrl}
+        title={content?.title || metadata?.title || contentData.topic}
+        slidesCount={content?.slidesCount || metadata?.slidesCount}
+        status="completed"
+        voiceName={content?.voiceName || metadata?.voiceName}
+        avatarName={content?.talkingPhotoName || metadata?.talkingPhotoName}
+        videoId={content?.videoId || metadata?.videoId}
+        isEditable={false}
+      />
+    );
+  }
 
   // Helper function to detect if content contains HTML tags
   const containsHtml = (text) => {
+    if (typeof text !== 'string') return false;
     return /<[^>]*>/g.test(text);
-  };
-
-  // Helper function to detect LaTeX expressions
-  const containsLatex = (text) => {
-    if (!text || typeof text !== 'string') return false;
-    return /\\[a-zA-Z]+|\\[(){}[\]]|\\frac|\\int|\\sum|\\prod|\\sqrt|\\left|\\right|\\begin|\\end|\\alpha|\\beta|\\gamma|\\delta|\\epsilon|\\theta|\\lambda|\\mu|\\pi|\\sigma|\\tau|\\phi|\\omega|\\infty|\\pm|\\mp|\\times|\\div|\\leq|\\geq|\\neq|\\approx|\\equiv|\\subset|\\supset|\\in|\\notin|\\cup|\\cap|\\emptyset|\\rightarrow|\\leftarrow|\\leftrightarrow|\\Rightarrow|\\Leftarrow|\\Leftrightarrow/g.test(text);
   };
 
   // Helper function to process content for proper rendering
   const processContent = (content) => {
     if (!content) return content;
     
-    // If content contains HTML tags, ensure proper formatting
-    if (containsHtml(content)) {
-      // Clean up any malformed HTML and ensure proper structure
-      return content
+    let processedContent = content;
+    
+    // CLEANUP: Remove rogue "[object Object]" strings from previous render errors
+    processedContent = processedContent.replace(/\[object Object\]/g, '');
+
+    // Handle HTML tags for RTL/LTR support
+    if (containsHtml(processedContent)) {
+      processedContent = processedContent
         .replace(/<div dir="rtl">/g, '<div dir="rtl" style="direction: rtl; text-align: right;">')
         .replace(/<div dir="ltr">/g, '<div dir="ltr" style="direction: ltr; text-align: left;">');
     }
-    
-    return content;
-  };
-
-  // Helper function to render LaTeX expressions
-  const renderLatexContent = (content) => {
-    if (!content) return content;
-    
-    // Split content by LaTeX expressions and render them
-    const latexRegex = /\\[a-zA-Z]+|\\[(){}[\]]|\\frac|\\int|\\sum|\\prod|\\sqrt|\\left|\\right|\\begin|\\end/g;
-    const parts = content.split(latexRegex);
-    const matches = content.match(latexRegex);
-    
-    if (!matches) return content;
-    
-    // Find LaTeX blocks (between $$ or $)
-    const latexBlockRegex = /\$\$([^$]+)\$\$/g;
-    const inlineLatexRegex = /\$([^$]+)\$/g;
-    
-    let processedContent = content;
-    
-    // Process block LaTeX ($$...$$)
-    processedContent = processedContent.replace(latexBlockRegex, (match, latex) => {
-      try {
-        return `<div class="katex-block">${latex}</div>`;
-      } catch (error) {
-        console.warn('LaTeX block rendering error:', error);
-        return match;
-      }
-    });
-    
-    // Process inline LaTeX ($...$)
-    processedContent = processedContent.replace(inlineLatexRegex, (match, latex) => {
-      try {
-        return `<span class="katex-inline">${latex}</span>`;
-      } catch (error) {
-        console.warn('LaTeX inline rendering error:', error);
-        return match;
-      }
-    });
     
     return processedContent;
   };
@@ -485,14 +423,11 @@ export default function ContentPreview({
                     style={/[\u0600-\u06FF\u0750-\u077F]/.test(contentData.content) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
                   >
                     <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      rehypePlugins={[rehypeRaw]}
-                      components={{
-                        ...MarkdownStyles,
-                        ...customComponents
-                      }}
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeKatex, rehypeRaw]}
+                      components={MarkdownStyles}
                     >
-                      {renderLatexContent(processContent(contentData.content))}
+                      {processContent(contentData.content)}
                     </ReactMarkdown>
                   </div>
                 ) : (

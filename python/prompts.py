@@ -564,6 +564,14 @@ Present video URLs using this exact markdown format: [Video Title](URL_from_web_
 
     For example, if a teacher asks "حل المعادلة 2x + 5 = 15" (Solve the equation 2x + 5 = 15), your response must be entirely in Arabic and show the mathematical expression as "٢x + ٥ = ١٥" using Arabic numerals with proper right-to-left alignment formatting.
 
+**CRITICAL LaTeX/Mathematical Notation Requirement:**
+When including mathematical expressions, equations, or formulas, you MUST use standard LaTeX notation:
+- For inline math: Use single dollar signs: $expression$
+- For display/block math: Use double dollar signs: $$expression$$
+- Use standard LaTeX commands: \frac{{}}{{}}, \sqrt{{}}, \int, \sum, etc.
+- NEVER use backslash-parenthesis \( \) or backslash-bracket \[ \] notation
+- NEVER use standalone backslashes or brackets without dollar signs
+
 {citation_instructions}
 
 ---
@@ -649,6 +657,15 @@ Please adhere to the following specifications:
     - Equation formatting and structure
     - Any mathematical terminology
     - **CRITICAL ALIGNMENT:** For Arabic mathematical expressions, you MUST format them with right-to-left alignment using HTML/CSS direction attributes or Unicode directional formatting to ensure proper display. Use `dir="rtl"` or Unicode RTL marks when presenting Arabic equations.
+
+5. **CRITICAL LaTeX/Mathematical Notation Requirement:**
+When including mathematical expressions, equations, or formulas, you MUST use standard LaTeX notation:
+- For inline math: Use single dollar signs: $expression$
+- For display/block math: Use double dollar signs: $$expression$$
+- Use standard LaTeX commands: \frac{{}}{{}}, \sqrt{{}}, \int, \sum, etc.
+- NEVER use backslash-parenthesis \( \) or backslash-bracket \[ \] notation
+- NEVER use standalone backslashes or brackets without dollar signs
+
 **EXAMPLE OUTPUT FORMAT:**
 
 1. What was the primary cause of the American Revolution?
