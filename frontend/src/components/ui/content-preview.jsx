@@ -136,14 +136,32 @@ export default function ContentPreview({
     
     let processedContent = content;
     
+    // Debug logging (temporary)
+    console.log('🔍 processContent - Raw content:', processedContent.substring(0, 200) + '...');
+    console.log('🔍 processContent - Contains HTML:', containsHtml(processedContent));
+    
     // CLEANUP: Remove rogue "[object Object]" strings from previous render errors
     processedContent = processedContent.replace(/\[object Object\]/g, '');
 
-    // Handle HTML tags for RTL/LTR support
+    // Handle HTML tags for RTL/LTR support - but prefer pure Markdown
     if (containsHtml(processedContent)) {
+      console.log('🧹 processContent - Removing HTML tags...');
+      
+      // Remove HTML wrapper tags more aggressively
       processedContent = processedContent
-        .replace(/<div dir="rtl">/g, '<div dir="rtl" style="direction: rtl; text-align: right;">')
-        .replace(/<div dir="ltr">/g, '<div dir="ltr" style="direction: ltr; text-align: left;">');
+        .replace(/<div dir="rtl">\s*/gi, '')
+        .replace(/<div dir="ltr">\s*/gi, '')
+        .replace(/<\/div>\s*/gi, '')
+        .replace(/<div[^>]*>\s*/gi, '')
+        .replace(/<\/div>\s*/gi, '');
+      
+      // Clean up excessive blank lines (more than 2 consecutive newlines)
+      processedContent = processedContent.replace(/\n{3,}/g, '\n\n');
+      
+      // Trim leading/trailing whitespace
+      processedContent = processedContent.trim();
+      
+      console.log('✅ processContent - After cleanup:', processedContent.substring(0, 200) + '...');
     }
     
     return processedContent;
