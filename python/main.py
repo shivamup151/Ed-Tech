@@ -487,7 +487,7 @@ class TeachingContentSchema(BaseModel):
     instructional_depth: str = Field(
         "standard",
         description="The level of detail and complexity.",
-        pattern="(?i)^(low|standard|high|basic|enriched)$"
+        pattern="(?i)^(low|standard|high|basic|enriched|simplified)$"
     )
     # Accept both old (low/high) and new (simplified/enriched), case-insensitive
     content_version: str = Field(
