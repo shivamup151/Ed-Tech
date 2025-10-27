@@ -35,6 +35,10 @@ import {
 import { toast } from "sonner";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
+import 'katex/dist/katex.min.css';
 import { MarkdownStyles } from '@/components/Markdown';
 
 export default function TeacherHistoryPage() {
@@ -556,8 +560,9 @@ Current page conversations: ${result.data.conversations.length}
                             style={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
                           >
                             <ReactMarkdown
+                              remarkPlugins={[remarkGfm, remarkMath]}
+                              rehypePlugins={[rehypeKatex, rehypeRaw]}
                               components={MarkdownStyles}
-                              remarkPlugins={[remarkGfm]}
                             >
                               {message.content}
                             </ReactMarkdown>

@@ -11,6 +11,7 @@ STUDENT_INITIAL_SYSTEM_PROMPT = """You are an expert AI Learning Coach. Your mis
 **Language and Formatting Requirement:**
 - You MUST respond in the SAME language as the student's query.
 - For Arabic responses, you MUST ensure the text alignment is ALWAYS right-to-left (RTL) for proper readability.
+- **CRITICAL:** Generate ONLY pure Markdown content. DO NOT use HTML tags like `<div dir="rtl">` or any other HTML wrapper tags. The frontend will automatically detect Arabic content and apply proper RTL styling.
 
 **Curriculum Context:**
 {curriculum_context}
@@ -504,9 +505,17 @@ For regular queries that don't need image generation, simply respond with "use_l
 CORE_CONTENT_GENERATION_PROMPT_TEMPLATE = """
 You are an expert AI instructional designer and a world-class {subject} teacher. Your primary task is to generate exceptionally detailed, comprehensive, and ready-to-use teaching content based on the user's precise specifications. Your output must be so thorough that a substitute teacher could use it effectively with no prior preparation. The content you generate must be the complete, final product, not a summary or a set of instructions for a teacher to follow.
 
+🚨 **CRITICAL FORMATTING RULE - READ THIS FIRST:**
+- **ABSOLUTELY NO HTML TAGS ALLOWED** - Never use `<div>`, `<span>`, `<p>`, or any HTML tags
+- **ONLY PURE MARKDOWN** - Use only Markdown syntax: # for headings, - for lists, ** for bold, etc.
+- **EXAMPLE OF WHAT NOT TO DO:** `<div dir="rtl"># Heading</div>` ❌
+- **EXAMPLE OF WHAT TO DO:** `# Heading` ✅
+- The frontend automatically detects Arabic and applies RTL styling - you don't need HTML!
+
 **Language and Formatting Requirement:**
 - You MUST respond in the SAME language as the student's query.
 - For Arabic responses, you MUST ensure the text alignment is ALWAYS right-to-left (RTL).
+- **CRITICAL:** Generate ONLY pure Markdown content. DO NOT use HTML tags like `<div dir="rtl">` or any other HTML wrapper tags. The frontend will automatically detect Arabic content and apply proper RTL styling.
 
 **Content Goal:** Generate a "{content_type}".
 
@@ -560,9 +569,24 @@ Present video URLs using this exact markdown format: [Video Title](URL_from_web_
     - Mathematical symbols and notation
     - Equation formatting and structure
     - Any mathematical terminology
-    - **CRITICAL ALIGNMENT:** For Arabic mathematical expressions, you MUST format them with right-to-left alignment using HTML/CSS direction attributes or Unicode directional formatting to ensure proper display. Use `dir="rtl"` or Unicode RTL marks when presenting Arabic equations.
+    - **CRITICAL ALIGNMENT:** For Arabic mathematical expressions, you MUST format them with right-to-left alignment. DO NOT use HTML tags like `<div dir="rtl">`. Instead, generate pure Markdown content that will be automatically detected and styled by the frontend. The frontend will automatically apply RTL styling to Arabic content.
 
-    For example, if a teacher asks "حل المعادلة 2x + 5 = 15" (Solve the equation 2x + 5 = 15), your response must be entirely in Arabic and show the mathematical expression as "٢x + ٥ = ١٥" using Arabic numerals with proper right-to-left alignment formatting.
+    **CRITICAL for Arabic Mathematical Expressions:**
+    When generating content in Arabic, mathematical equations MUST be written in RIGHT-TO-LEFT order:
+    - Example CORRECT: ١٥ = ٥ + x (the equation reads right-to-left)
+    - Example INCORRECT: x + ٥ = ١٥ (left-to-right order)
+
+    For complex equations:
+    - CORRECT: $$\int (٣س² + ٢س³)ds = (٢٥ + ١٥) - (٠ + ٠) = ٤٠$$
+    - Structure: [result] = [right operand] [operator] [left operand]
+
+    Format all Arabic mathematical expressions properly:
+    - Use $$...$$ for display math (KaTeX will handle it)
+    - Ensure the equation components are ordered right-to-left
+    - Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) consistently
+    - Generate pure Markdown without HTML wrapper tags
+
+    For example, if a teacher asks "حل المعادلة 2x + 5 = 15" (Solve the equation 2x + 5 = 15), your response must be entirely in Arabic and show the mathematical expression as "١٥ = ٥ + ٢x" using Arabic numerals with proper right-to-left alignment formatting.
 
 **CRITICAL LaTeX/Mathematical Notation Requirement:**
 When including mathematical expressions, equations, or formulas, you MUST use standard LaTeX notation:
@@ -588,6 +612,12 @@ When including mathematical expressions, equations, or formulas, you MUST use st
 
 **Your Task:**
 Please generate the requested "{content_type}" now. You MUST strictly adhere to all configurations and structural requirements detailed above. The generated content must be **exceptionally detailed, containing the complete and unabridged text and materials, making it directly usable by a teacher with absolutely no further writing or content creation required.**
+
+🚨 **FINAL REMINDER - NO HTML TAGS:**
+- Generate ONLY pure Markdown content
+- NO `<div>`, `<span>`, `<p>`, or any HTML tags
+- Use Markdown syntax: # for headings, - for lists, ** for bold
+- The frontend will handle RTL styling automatically
 """
 
 # ==============================================================================
@@ -596,6 +626,13 @@ Please generate the requested "{content_type}" now. You MUST strictly adhere to 
 
 ASSESSMENT_GENERATION_PROMPT_TEMPLATE = """
 You are an expert AI assistant specialized in creating educational materials. Your task is to generate a set of test questions based on the user-provided schema and the provided curriculum context.
+
+🚨 **CRITICAL FORMATTING RULE - READ THIS FIRST:**
+- **ABSOLUTELY NO HTML TAGS ALLOWED** - Never use `<div>`, `<span>`, `<p>`, or any HTML tags
+- **ONLY PURE MARKDOWN** - Use only Markdown syntax: # for headings, - for lists, ** for bold, etc.
+- **EXAMPLE OF WHAT NOT TO DO:** `<div dir="rtl"># Heading</div>` ❌
+- **EXAMPLE OF WHAT TO DO:** `# Heading` ✅
+- The frontend automatically detects Arabic and applies RTL styling - you don't need HTML!
 
 **Primary Source Mandate:** You MUST prioritize the information provided in the **'Curriculum Context'** as the *only* source for generating factually accurate test questions and answers. This context is the absolute source of truth. All questions, options, and solutions must be directly verifiable from the curriculum context alone. Do not introduce any external information.
 
@@ -656,7 +693,22 @@ Please adhere to the following specifications:
     - Mathematical symbols and notation
     - Equation formatting and structure
     - Any mathematical terminology
-    - **CRITICAL ALIGNMENT:** For Arabic mathematical expressions, you MUST format them with right-to-left alignment using HTML/CSS direction attributes or Unicode directional formatting to ensure proper display. Use `dir="rtl"` or Unicode RTL marks when presenting Arabic equations.
+    - **CRITICAL ALIGNMENT:** For Arabic mathematical expressions, you MUST format them with right-to-left alignment. DO NOT use HTML tags like `<div dir="rtl">`. Instead, generate pure Markdown content that will be automatically detected and styled by the frontend. The frontend will automatically apply RTL styling to Arabic content.
+
+    **CRITICAL for Arabic Mathematical Expressions:**
+    When generating content in Arabic, mathematical equations MUST be written in RIGHT-TO-LEFT order:
+    - Example CORRECT: ١٥ = ٥ + x (the equation reads right-to-left)
+    - Example INCORRECT: x + ٥ = ١٥ (left-to-right order)
+
+    For complex equations:
+    - CORRECT: $$\int (٣س² + ٢س³)ds = (٢٥ + ١٥) - (٠ + ٠) = ٤٠$$
+    - Structure: [result] = [right operand] [operator] [left operand]
+
+    Format all Arabic mathematical expressions properly:
+    - Use $$...$$ for display math (KaTeX will handle it)
+    - Ensure the equation components are ordered right-to-left
+    - Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) consistently
+    - Generate pure Markdown without HTML wrapper tags
 
 5. **CRITICAL LaTeX/Mathematical Notation Requirement:**
 When including mathematical expressions, equations, or formulas, you MUST use standard LaTeX notation:
@@ -685,4 +737,10 @@ D) Trade restrictions
 3. The Declaration of Independence established the thirteen American colonies as independent states and outlined the philosophical foundation for democratic government, including the principles of individual rights and government by consent of the governed.
 
 **STRICT COMPLIANCE REQUIRED:** You must follow this exact format. Any deviation will cause parsing errors in the frontend system.
+
+🚨 **FINAL REMINDER - NO HTML TAGS:**
+- Generate ONLY pure Markdown content
+- NO `<div>`, `<span>`, `<p>`, or any HTML tags
+- Use Markdown syntax: # for headings, - for lists, ** for bold
+- The frontend will handle RTL styling automatically
 """
