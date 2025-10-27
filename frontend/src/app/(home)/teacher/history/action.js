@@ -657,3 +657,79 @@ export async function migrateConversations() {
   }
 }
 
+// Save or update a teacher conversation
+export async function saveTeacherConversation(formData) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const conversationData = JSON.parse(formData.get('conversationData'));
+    console.log('Saving teacher conversation data for user:', session.user.id);
+    
+    const { db } = await connectToDatabase();
+
+    const conversation = {
+      teacherId: new ObjectId(session.user.id),
+      sessionId: conversationData.sessionId,
+      title: conversationData.title || `Voice Coach Chat - ${new Date().toLocaleDateString()}`,
+      sessionType: conversationData.sessionType || 'voice',
+      messages: conversationData.messages || [],
+      uploadedFiles: conversationData.uploadedFiles || [],
+      teacherData: conversationData.teacherData || {},
+      conversationStats: {
+        totalMessages: conversationData.messages?.length || 0,
+        userMessages: conversationData.messages?.filter(m => m.role === 'user').length || 0,
+        aiMessages: conversationData.messages?.filter(m => m.role === 'assistant').length || 0,
+        totalDuration: conversationData.totalDuration || 0,
+        topicsDiscussed: conversationData.topicsDiscussed || [],
+        difficultyLevel: conversationData.difficultyLevel || 'medium',
+        learningOutcomes: conversationData.learningOutcomes || []
+      },
+      metadata: {
+        createdAt: conversationData.metadata?.createdAt ? new Date(conversationData.metadata.createdAt) : new Date(),
+        updatedAt: new Date(),
+        lastMessageAt: new Date(),
+        isActive: conversationData.metadata?.isActive !== false,
+        tags: conversationData.metadata?.tags || []
+      }
+    };
+
+    // Check if conversation already exists
+    const existingConversation = await db.collection('teacher_conversations')
+      .findOne({ sessionId: conversationData.sessionId });
+
+    let result;
+    if (existingConversation) {
+      // Update existing conversation
+      result = await db.collection('teacher_conversations')
+        .updateOne(
+          { sessionId: conversationData.sessionId },
+          { $set: conversation }
+        );
+      console.log('Updated existing teacher conversation:', result);
+    } else {
+      // Insert new conversation
+      result = await db.collection('teacher_conversations')
+        .insertOne(conversation);
+      console.log('Inserted new teacher conversation:', result);
+    }
+
+    revalidatePath('/teacher/history');
+    
+    return { 
+      success: true, 
+      conversationId: result.insertedId || existingConversation?._id,
+      message: existingConversation ? 'Conversation updated successfully' : 'Conversation saved successfully'
+    };
+
+  } catch (error) {
+    console.error('Error saving teacher conversation:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Failed to save conversation' 
+    };
+  }
+}
+

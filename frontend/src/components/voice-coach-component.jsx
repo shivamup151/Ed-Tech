@@ -47,6 +47,10 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
+import 'katex/dist/katex.min.css';
 import { toast } from 'sonner';
 import { MarkdownStyles } from '@/components/Markdown';
 import { generateHydrationSafeId, getHydrationSafeTimestamp, useIsClient } from '@/lib/hydration-safe';
@@ -59,7 +63,6 @@ import {
     getVoiceCoachHealth,
     createVoiceCoachSession,
     getTeacherLearningInsights,
-    saveVoiceCoachChatSession,
     getTeacherProgressData,
     getTeacherAchievementsData,
     getTeacherLearningStats,
@@ -70,6 +73,7 @@ import {
     initializeVoiceCoachSession,
     clearTeacherDataCache
 } from '../app/(home)/teacher/voice-coach/action';
+import { saveTeacherConversation } from '../app/(home)/teacher/history/action';
 
 // Import RealtimeOpenAIService from the separate file
 import { RealtimeOpenAIService } from '@/lib/realtimeOpenAI';
@@ -351,7 +355,8 @@ const VoiceCoach = () => {
                     // FIXED: Save conversation immediately after adding AI message
                     setTimeout(async () => {
                         try {
-                            await saveVoiceCoachConversationToHistory(updatedMessages, 'text');
+                            console.log('Saving voice coach conversation with sessionId:', sessionId);
+                            await saveConversationToHistory(updatedMessages, 'text');
                         } catch (error) {
                             console.error('Failed to save conversation:', error);
                         }
@@ -763,7 +768,11 @@ const VoiceCoach = () => {
         
         return (
             <div className="prose prose-sm max-w-none dark:prose-invert">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownStyles}>
+                <ReactMarkdown 
+                    remarkPlugins={[remarkGfm, remarkMath]} 
+                    rehypePlugins={[rehypeKatex, rehypeRaw]} 
+                    components={MarkdownStyles}
+                >
                     {content}
                 </ReactMarkdown>
             </div>
@@ -778,7 +787,11 @@ const VoiceCoach = () => {
         return (
             <div className="relative group">
                 <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownStyles}>
+                    <ReactMarkdown 
+                        remarkPlugins={[remarkGfm, remarkMath]} 
+                        rehypePlugins={[rehypeKatex, rehypeRaw]} 
+                        components={MarkdownStyles}
+                    >
                         {message.content}
                     </ReactMarkdown>
                 </div>
@@ -953,8 +966,18 @@ Exported on: ${new Date().toLocaleDateString()}\\par\\par`;
         URL.revokeObjectURL(url);
     };
 
+    // Save conversation when component unmounts
+    useEffect(() => {
+        return () => {
+            if (messages.length > 0 && sessionId) {
+                console.log('Component unmounting, saving conversation...');
+                saveConversationToHistory(messages, 'text');
+            }
+        };
+    }, [messages, sessionId]);
+
     // NEW: Add conversation saving function for Voice Coach
-    const saveVoiceCoachConversationToHistory = async (messagesToSave, sessionType = 'text') => {
+    const saveConversationToHistory = async (messagesToSave, sessionType = 'text') => {
         try {
             const conversationData = {
                 sessionId: sessionId,
@@ -1005,7 +1028,7 @@ Exported on: ${new Date().toLocaleDateString()}\\par\\par`;
             const formData = new FormData();
             formData.append('conversationData', JSON.stringify(conversationData));
             
-            const result = await saveVoiceCoachChatSession(formData);
+            const result = await saveTeacherConversation(formData);
             
             if (result.success) {
                 console.log('Voice Coach conversation saved to history successfully');

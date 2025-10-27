@@ -47,6 +47,10 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
+import 'katex/dist/katex.min.css';
 import PythonApi from '@/lib/PythonApi';
 import { toast } from 'sonner';
 import { MarkdownStyles } from '@/components/Markdown';
@@ -765,7 +769,11 @@ const AiTutor = () => {
         
         return (
             <div className="prose prose-sm max-w-none dark:prose-invert">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownStyles}>
+                <ReactMarkdown 
+                    remarkPlugins={[remarkGfm, remarkMath]} 
+                    rehypePlugins={[rehypeKatex, rehypeRaw]} 
+                    components={MarkdownStyles}
+                >
                     {content}
                 </ReactMarkdown>
             </div>
@@ -780,7 +788,11 @@ const AiTutor = () => {
             return (
                 <div className="relative group">
                     <div className="prose prose-sm max-w-none dark:prose-invert">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownStyles}>
+                        <ReactMarkdown 
+                            remarkPlugins={[remarkGfm, remarkMath]} 
+                            rehypePlugins={[rehypeKatex, rehypeRaw]} 
+                            components={MarkdownStyles}
+                        >
                             {message.content}
                         </ReactMarkdown>
                     </div>

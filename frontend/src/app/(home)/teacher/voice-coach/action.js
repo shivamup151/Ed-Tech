@@ -545,6 +545,7 @@ export async function saveVoiceCoachChatSession(formData) {
     }
 
     revalidatePath('/teacher/voice-coach');
+    revalidatePath('/teacher/history');
     return { 
       success: true, 
       conversationId: (result.insertedId || existingConversation._id).toString() 
