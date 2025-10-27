@@ -30,6 +30,10 @@ import VideoPreview from "@/components/ui/video-preview";
 import { CarouselWithControls } from "@/components/ui/carousel";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
+import 'katex/dist/katex.min.css';
 import { MarkdownStyles } from "../Markdown";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -1102,7 +1106,8 @@ const QuizWithInputs = ({ content, onAnswerChange, studentAnswers }) => {
             return (
               <ReactMarkdown 
                 key={index} 
-                remarkPlugins={[remarkGfm]} 
+                remarkPlugins={[remarkGfm, remarkMath]} 
+                rehypePlugins={[rehypeKatex, rehypeRaw]}
                 components={MarkdownStyles}
               >
                 {part}
@@ -2026,7 +2031,11 @@ export default function StartLearning({
             </div>
             <div className="flex-1 min-h-0 overflow-auto">
               <div className="prose prose-sm dark:prose-invert max-w-none pr-4">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownStyles}>
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm, remarkMath]} 
+                  rehypePlugins={[rehypeKatex, rehypeRaw]} 
+                  components={MarkdownStyles}
+                >
                   {content.searchResults || content.generatedContent || content.content || ''}
                 </ReactMarkdown>
               </div>

@@ -39,6 +39,7 @@ When including mathematical expressions, equations, or formulas, you MUST use st
 - Use standard LaTeX commands: \frac{{}}{{}}, \sqrt{{}}, \int, \sum, etc.
 - NEVER use backslash-parenthesis \( \) or backslash-bracket \[ \] notation
 - NEVER use standalone backslashes or brackets without dollar signs
+- NEVER use \left or \right commands
 
 **🚨 ABSOLUTE PRIORITY ORDER - NO EXCEPTIONS 🚨**
 
@@ -164,6 +165,7 @@ When including mathematical expressions, equations, or formulas, you MUST use st
 - Use standard LaTeX commands: \frac{{}}{{}}, \sqrt{{}}, \int, \sum, etc.
 - NEVER use backslash-parenthesis \( \) or backslash-bracket \[ \] notation
 - NEVER use standalone backslashes or brackets without dollar signs
+- NEVER use \left or \right commands
 
 **SESSION CONTINUITY RULE:**
 Review the conversation history and adhere strictly to the internal lesson plan you created at the start of this session.
@@ -312,6 +314,7 @@ When including mathematical expressions, equations, or formulas, you MUST use st
 - Use standard LaTeX commands: \frac{{}}{{}}, \sqrt{{}}, \int, \sum, etc.
 - NEVER use backslash-parenthesis \( \) or backslash-bracket \[ \] notation
 - NEVER use standalone backslashes or brackets without dollar signs
+- NEVER use \left or \right commands
 
 **🎯 YOUR FIRST MESSAGE STRUCTURE (EXECUTE IMMEDIATELY):**
 
@@ -437,6 +440,7 @@ When including mathematical expressions, equations, or formulas, you MUST use st
 - Use standard LaTeX commands: \frac{{}}{{}}, \sqrt{{}}, \int, \sum, etc.
 - NEVER use backslash-parenthesis \( \) or backslash-bracket \[ \] notation
 - NEVER use standalone backslashes or brackets without dollar signs
+- NEVER use \left or \right commands
 
 **RESPONSE STRUCTURE FOR FOLLOW-UP MESSAGES:**
 
@@ -656,6 +660,7 @@ When including mathematical expressions, equations, or formulas, you MUST use st
 - Use standard LaTeX commands: \frac{{}}{{}}, \sqrt{{}}, \int, \sum, etc.
 - NEVER use backslash-parenthesis \( \) or backslash-bracket \[ \] notation
 - NEVER use standalone backslashes or brackets without dollar signs
+- NEVER use \left or \right commands
 
 {citation_instructions}
 
@@ -776,6 +781,7 @@ When including mathematical expressions, equations, or formulas, you MUST use st
 - Use standard LaTeX commands: \frac{{}}{{}}, \sqrt{{}}, \int, \sum, etc.
 - NEVER use backslash-parenthesis \( \) or backslash-bracket \[ \] notation
 - NEVER use standalone backslashes or brackets without dollar signs
+- NEVER use \left or \right commands
 
 **EXAMPLE OUTPUT FORMAT:**
 
