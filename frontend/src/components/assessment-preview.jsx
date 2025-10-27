@@ -12,6 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FileText, Download, Copy, Check, Edit, Save, X, Clock, Users, BookOpen, ChevronDown, CheckCircle, XCircle, FileCheck, Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { generateDOCX, generateMarkdown } from "@/lib/pdf-utils";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
+import 'katex/dist/katex.min.css';
+import { MarkdownStyles } from '@/components/Markdown';
 
 export default function AssessmentPreview({ 
   assessment,
@@ -342,8 +349,20 @@ export default function AssessmentPreview({
     return (
       <div key={index} className="border rounded-lg p-4 mb-4">
         <div className="flex items-start justify-between mb-3">
-          <h3 className="font-medium text-base">
-            Question {question.number}: {question.text}
+          <h3 
+            className="font-medium text-base"
+            dir={/[\u0600-\u06FF\u0750-\u077F]/.test(question.text) ? 'rtl' : 'ltr'}
+            style={/[\u0600-\u06FF\u0750-\u077F]/.test(question.text) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+          >
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex, rehypeRaw]}
+                components={MarkdownStyles}
+              >
+                {`Question ${question.number}: ${question.text}`}
+              </ReactMarkdown>
+            </div>
           </h3>
           {isReviewMode && correctAnswer && isCorrect && (
             <div className="flex items-center gap-1 ml-2">
@@ -418,7 +437,21 @@ export default function AssessmentPreview({
                     <span className="font-medium text-sm">
                       {String.fromCharCode(65 + optionIndex)}.
                     </span>
-                    <span className="flex-1">{option.text}</span>
+                    <span 
+                      className="flex-1"
+                      dir={/[\u0600-\u06FF\u0750-\u077F]/.test(option.text) ? 'rtl' : 'ltr'}
+                      style={/[\u0600-\u06FF\u0750-\u077F]/.test(option.text) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+                    >
+                      <div className="prose prose-xs max-w-none dark:prose-invert">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm, remarkMath]}
+                          rehypePlugins={[rehypeKatex, rehypeRaw]}
+                          components={MarkdownStyles}
+                        >
+                          {option.text}
+                        </ReactMarkdown>
+                      </div>
+                    </span>
                     {isReviewMode && isCorrectOption && (
                       <CheckCircle className="h-4 w-4 text-green-600" />
                     )}
@@ -506,8 +539,21 @@ export default function AssessmentPreview({
         {/* Show correct answer in review mode or preview mode */}
         {(isReviewMode || isPreviewMode) && correctAnswer && (
           <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
-            <p className="text-sm text-blue-700 dark:text-blue-400">
-              <strong>Correct Answer:</strong> {correctAnswer}
+            <p 
+              className="text-sm text-blue-700 dark:text-blue-400"
+              dir={/[\u0600-\u06FF\u0750-\u077F]/.test(correctAnswer) ? 'rtl' : 'ltr'}
+              style={/[\u0600-\u06FF\u0750-\u077F]/.test(correctAnswer) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+            >
+              <strong>Correct Answer:</strong>
+              <div className="prose prose-xs max-w-none dark:prose-invert mt-1">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex, rehypeRaw]}
+                  components={MarkdownStyles}
+                >
+                  {correctAnswer}
+                </ReactMarkdown>
+              </div>
             </p>
           </div>
         )}
@@ -608,10 +654,18 @@ export default function AssessmentPreview({
             {/* Show the raw content */}
             <div className="bg-muted/50 rounded-lg p-4">
               <h4 className="font-medium mb-2 text-foreground">Content:</h4>
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                <pre className="whitespace-pre-wrap text-sm text-foreground">
+              <div 
+                className="prose prose-sm dark:prose-invert max-w-none"
+                dir={/[\u0600-\u06FF\u0750-\u077F]/.test(content) ? 'rtl' : 'ltr'}
+                style={/[\u0600-\u06FF\u0750-\u077F]/.test(content) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+              >
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex, rehypeRaw]}
+                  components={MarkdownStyles}
+                >
                   {content}
-                </pre>
+                </ReactMarkdown>
               </div>
             </div>
           </div>

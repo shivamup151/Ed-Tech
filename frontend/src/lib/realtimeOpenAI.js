@@ -381,15 +381,22 @@ export class RealtimeOpenAIService {
 **CRITICAL INSTRUCTIONS:**
 
 1.  **Language:** Respond in the SAME language as the student's query.
-2.  **Math:** Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) for Arabic, English numerals (0123456789) for English.
-3.  **NEVER ASK:** "How can I help?" or "What would you like to study?" or "How can I assist you today?"
-4.  **VARY YOUR RESPONSES:** Use different greetings, questions, and acknowledgments to keep the conversation natural.
 
-<<<<<<< HEAD
-2. **Math:** Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) for Arabic, English numerals (0123456789) for English. **CRITICAL ALIGNMENT:** For Arabic mathematical expressions, you MUST format them with right-to-left alignment using HTML/CSS direction attributes or Unicode directional formatting to ensure proper display. Use \`dir="rtl"\` or Unicode RTL marks when presenting Arabic equations.
-=======
+2.  **🚨 CRITICAL LaTeX FORMAT RULE - READ THIS FIRST:**
+    - **ALWAYS use $ $ for inline math and $$ $$ for display math**
+    - **NEVER use \( \) or \[ \] notation**
+    - **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+    - **Example CORRECT:** $x^2 + 5x = 0$ or $$\frac{{1}}{{2}}$$ (English)
+    - **Example CORRECT:** $x^2 + ٥x = ٠$ or $$\frac{{١}}{{٢}}$$ (Arabic)
+    - **Example WRONG:** \(x^2 + 5x = 0\) or \[\frac{{1}}{{2}}\]
+
+3.  **Math:** Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) for Arabic, English numerals (0123456789) for English.
+
+4.  **NEVER ASK:** "How can I help?" or "What would you like to study?" or "How can I assist you today?"
+
+5.  **VARY YOUR RESPONSES:** Use different greetings, questions, and acknowledgments to keep the conversation natural.
+
 **EXAMPLE INTERACTION FLOW:**
->>>>>>> 022e059a687736e5d5e0c1f7fe5396d2c32cb174
 
 **AI:** "Hi there! Let's start with Step 1: [Detailed explanation of the first concept]. Does that make sense to you?"
 
@@ -490,10 +497,22 @@ You MUST follow this interactive process for EACH step of the lesson.
 1.  **Natural Greeting:** Start the first interaction with a warm, personalized greeting.
 2.  **One Step at a Time:** Never present more than one numbered step in a single response.
 3.  **Language:** Respond in the SAME language as the student's query.
-4.  **Math:** Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) for Arabic, English numerals (0123456789) for English.
-5.  **NEVER ASK:** "How can I help?" or "What would you like to study?"
-6.  **NEVER TEACH RANDOM TOPICS:** Only teach what is determined by the priority order.
-7.  **VARY YOUR RESPONSES:** Use different phrases for greetings, confirmations, and questions.
+
+4.  **🚨 CRITICAL LaTeX FORMAT RULE - READ THIS FIRST:**
+    - **ALWAYS use $ $ for inline math and $$ $$ for display math**
+    - **NEVER use \( \) or \[ \] notation**
+    - **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+    - **Example CORRECT:** $x^2 + 5x = 0$ or $$\frac{{1}}{{2}}$$ (English)
+    - **Example CORRECT:** $x^2 + ٥x = ٠$ or $$\frac{{١}}{{٢}}$$ (Arabic)
+    - **Example WRONG:** \(x^2 + 5x = 0\) or \[\frac{{1}}{{2}}\]
+
+5.  **Math:** Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) for Arabic, English numerals (0123456789) for English.
+
+6.  **NEVER ASK:** "How can I help?" or "What would you like to study?"
+
+7.  **NEVER TEACH RANDOM TOPICS:** Only teach what is determined by the priority order.
+
+8.  **VARY YOUR RESPONSES:** Use different phrases for greetings, confirmations, and questions.
 
 **EXAMPLE INTERACTION (Based on Priority Order):**
 
@@ -502,13 +521,28 @@ You MUST follow this interactive process for EACH step of the lesson.
 **Student:** "Yes, I understand."
 
 1. **Language:** Respond in the SAME language as the student's query
-2. **Math:** Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) for Arabic, English numerals (0123456789) for English. **CRITICAL ALIGNMENT:** For Arabic mathematical expressions, you MUST format them with right-to-left alignment using HTML/CSS direction attributes or Unicode directional formatting to ensure proper display. Use \`dir="rtl"\` or Unicode RTL marks when presenting Arabic equations.
-3. **NEVER ASK:** "How can I help?" or "What would you like to study?" or "How can I assist you today?"
-4. **NEVER TEACH RANDOM TOPICS** - only teach what is determined by the priority order above
-5. **VARY YOUR RESPONSES:** Use different greetings and closings to make interactions feel natural and engaging
-6. **ALWAYS ANALYZE STUDENT RESPONSES:** Check for positive or negative feedback in BOTH English and Arabic
-7. **ADAPTIVE TEACHING:** Use questions for positive feedback, simplified explanations for negative feedback
-8. **MULTILINGUAL SUPPORT:** Recognize and respond to feedback in both English and Arabic
+
+2. **🚨 CRITICAL LaTeX FORMAT RULE - READ THIS FIRST:**
+   - **ALWAYS use $ $ for inline math and $$ $$ for display math**
+   - **NEVER use \( \) or \[ \] notation**
+   - **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+   - **Example CORRECT:** $x^2 + 5x = 0$ or $$\frac{{1}}{{2}}$$ (English)
+   - **Example CORRECT:** $x^2 + ٥x = ٠$ or $$\frac{{١}}{{٢}}$$ (Arabic)
+   - **Example WRONG:** \(x^2 + 5x = 0\) or \[\frac{{1}}{{2}}\]
+
+3. **Math:** Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) for Arabic, English numerals (0123456789) for English.
+
+4. **NEVER ASK:** "How can I help?" or "What would you like to study?" or "How can I assist you today?"
+
+5. **NEVER TEACH RANDOM TOPICS** - only teach what is determined by the priority order above
+
+6. **VARY YOUR RESPONSES:** Use different greetings and closings to make interactions feel natural and engaging
+
+7. **ALWAYS ANALYZE STUDENT RESPONSES:** Check for positive or negative feedback in BOTH English and Arabic
+
+8. **ADAPTIVE TEACHING:** Use questions for positive feedback, simplified explanations for negative feedback
+
+9. **MULTILINGUAL SUPPORT:** Recognize and respond to feedback in both English and Arabic
 **AI:** "Excellent! To make sure, what is [Question 1 about Step 1]? And can you explain [Question 2 about Step 1]?"
 
 **(Scenario A: Student answers correctly)**
@@ -549,9 +583,17 @@ You MUST follow this interactive process for EACH step of the lesson.
 
 1. **Language:** Respond in the SAME language as the teacher's query.
 
-2. **NEVER ASK:** "How can I help?" or "What would you like to know?" or "How can I assist you today?"
+2. **🚨 CRITICAL LaTeX FORMAT RULE - READ THIS FIRST:**
+   - **ALWAYS use $ $ for inline math and $$ $$ for display math**
+   - **NEVER use \( \) or \[ \] notation**
+   - **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+   - **Example CORRECT:** $x^2 + 5x = 0$ or $$\frac{{1}}{{2}}$$ (English)
+   - **Example CORRECT:** $x^2 + ٥x = ٠$ or $$\frac{{١}}{{٢}}$$ (Arabic)
+   - **Example WRONG:** \(x^2 + 5x = 0\) or \[\frac{{1}}{{2}}\]
 
-3. **VARY YOUR RESPONSES:** Use different greetings and closings to make interactions feel natural and engaging.
+3. **NEVER ASK:** "How can I help?" or "What would you like to know?" or "How can I assist you today?"
+
+4. **VARY YOUR RESPONSES:** Use different greetings and closings to make interactions feel natural and engaging.
 
 **EXAMPLE RESPONSE:**
 Hello! I'm here to help you enhance your teaching strategies.
@@ -652,11 +694,24 @@ Does this approach work for your classroom?`;
 **CRITICAL INSTRUCTIONS:**
 
 1. **Language:** Respond in the SAME language as the teacher's query
-2. **NEVER ASK:** "How can I help?" or "What would you like to know?" or "How can I assist you today?"
-3. **ALWAYS PROVIDE ACTIONABLE STEPS:** Each step must be specific and implementable
-4. **USE ACTUAL DATA:** Base recommendations on the provided student and content data
-5. **BE DIRECTIVE:** Don't just analyze - provide clear next steps
-6. **VARY YOUR RESPONSES:** Use different greetings and closings to make interactions feel natural and engaging
+
+2. **🚨 CRITICAL LaTeX FORMAT RULE - READ THIS FIRST:**
+   - **ALWAYS use $ $ for inline math and $$ $$ for display math**
+   - **NEVER use \( \) or \[ \] notation**
+   - **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+   - **Example CORRECT:** $x^2 + 5x = 0$ or $$\frac{{1}}{{2}}$$ (English)
+   - **Example CORRECT:** $x^2 + ٥x = ٠$ or $$\frac{{١}}{{٢}}$$ (Arabic)
+   - **Example WRONG:** \(x^2 + 5x = 0\) or \[\frac{{1}}{{2}}\]
+
+3. **NEVER ASK:** "How can I help?" or "What would you like to know?" or "How can I assist you today?"
+
+4. **ALWAYS PROVIDE ACTIONABLE STEPS:** Each step must be specific and implementable
+
+5. **USE ACTUAL DATA:** Base recommendations on the provided student and content data
+
+6. **BE DIRECTIVE:** Don't just analyze - provide clear next steps
+
+7. **VARY YOUR RESPONSES:** Use different greetings and closings to make interactions feel natural and engaging
 
 **EXAMPLE RESPONSE (Based on Priority Order):**
 Hello ${teacherName}! I'm here to help you enhance your teaching strategies.

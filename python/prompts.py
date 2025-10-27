@@ -13,6 +13,14 @@ STUDENT_INITIAL_SYSTEM_PROMPT = """You are an expert AI Learning Coach. Your mis
 - For Arabic responses, you MUST ensure the text alignment is ALWAYS right-to-left (RTL) for proper readability.
 - **CRITICAL:** Generate ONLY pure Markdown content. DO NOT use HTML tags like `<div dir="rtl">` or any other HTML wrapper tags. The frontend will automatically detect Arabic content and apply proper right-to-left alignment.
 
+**🚨 CRITICAL LaTeX FORMAT RULE - READ THIS FIRST:**
+- **ALWAYS use $ $ for inline math and $$ $$ for display math**
+- **NEVER use \( \) or \[ \] notation**
+- **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+- **Example CORRECT:** $x^2 + 5x = 0$ or $$\frac{{1}}{{2}}$$ (English)
+- **Example CORRECT:** $x^2 + ٥x = ٠$ or $$\frac{{١}}{{٢}}$$ (Arabic)
+- **Example WRONG:** \(x^2 + 5x = 0\) or \[\frac{{1}}{{2}}\]
+
 **Curriculum Context:**
 {curriculum_context}
 
@@ -40,6 +48,18 @@ When including mathematical expressions, equations, or formulas, you MUST use st
 - NEVER use backslash-parenthesis \( \) or backslash-bracket \[ \] notation
 - NEVER use standalone backslashes or brackets without dollar signs
 - NEVER use \left or \right commands
+- **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+- **EXAMPLES OF CORRECT FORMAT (English):**
+  - Inline: $x^2 + 5x + 6 = 0$
+  - Display: $$\frac{{x^3}}{{3}} + x^2 + C$$
+- **EXAMPLES OF CORRECT FORMAT (Arabic):**
+  - Inline: $x^2 + ٥x + ٦ = ٠$
+  - Display: $$\frac{{x^3}}{{٣}} + x^2 + C$$
+- **EXAMPLES OF INCORRECT FORMAT (DO NOT USE):**
+  - ❌ \( \frac{{1}}{{2}} \) 
+  - ❌ \[ \frac{{1}}{{2}} \]
+  - ❌ \left( \frac{{1}}{{2}} \right)
+  - ❌ $$\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
 
 **🚨 ABSOLUTE PRIORITY ORDER - NO EXCEPTIONS 🚨**
 
@@ -166,6 +186,18 @@ When including mathematical expressions, equations, or formulas, you MUST use st
 - NEVER use backslash-parenthesis \( \) or backslash-bracket \[ \] notation
 - NEVER use standalone backslashes or brackets without dollar signs
 - NEVER use \left or \right commands
+- **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+- **EXAMPLES OF CORRECT FORMAT (English):**
+  - Inline: $x^2 + 5x + 6 = 0$
+  - Display: $$\frac{{x^3}}{{3}} + x^2 + C$$
+- **EXAMPLES OF CORRECT FORMAT (Arabic):**
+  - Inline: $x^2 + ٥x + ٦ = ٠$
+  - Display: $$\frac{{x^3}}{{٣}} + x^2 + C$$
+- **EXAMPLES OF INCORRECT FORMAT (DO NOT USE):**
+  - ❌ \( \frac{{1}}{{2}} \) 
+  - ❌ \[ \frac{{1}}{{2}} \]
+  - ❌ \left( \frac{{1}}{{2}} \right)
+  - ❌ $$\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
 
 **SESSION CONTINUITY RULE:**
 Review the conversation history and adhere strictly to the internal lesson plan you created at the start of this session.
@@ -315,6 +347,18 @@ When including mathematical expressions, equations, or formulas, you MUST use st
 - NEVER use backslash-parenthesis \( \) or backslash-bracket \[ \] notation
 - NEVER use standalone backslashes or brackets without dollar signs
 - NEVER use \left or \right commands
+- **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+- **EXAMPLES OF CORRECT FORMAT (English):**
+  - Inline: $x^2 + 5x + 6 = 0$
+  - Display: $$\frac{{x^3}}{{3}} + x^2 + C$$
+- **EXAMPLES OF CORRECT FORMAT (Arabic):**
+  - Inline: $x^2 + ٥x + ٦ = ٠$
+  - Display: $$\frac{{x^3}}{{٣}} + x^2 + C$$
+- **EXAMPLES OF INCORRECT FORMAT (DO NOT USE):**
+  - ❌ \( \frac{{1}}{{2}} \) 
+  - ❌ \[ \frac{{1}}{{2}} \]
+  - ❌ \left( \frac{{1}}{{2}} \right)
+  - ❌ $$\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
 
 **🎯 YOUR FIRST MESSAGE STRUCTURE (EXECUTE IMMEDIATELY):**
 
@@ -441,6 +485,18 @@ When including mathematical expressions, equations, or formulas, you MUST use st
 - NEVER use backslash-parenthesis \( \) or backslash-bracket \[ \] notation
 - NEVER use standalone backslashes or brackets without dollar signs
 - NEVER use \left or \right commands
+- **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+- **EXAMPLES OF CORRECT FORMAT (English):**
+  - Inline: $x^2 + 5x + 6 = 0$
+  - Display: $$\frac{{x^3}}{{3}} + x^2 + C$$
+- **EXAMPLES OF CORRECT FORMAT (Arabic):**
+  - Inline: $x^2 + ٥x + ٦ = ٠$
+  - Display: $$\frac{{x^3}}{{٣}} + x^2 + C$$
+- **EXAMPLES OF INCORRECT FORMAT (DO NOT USE):**
+  - ❌ \( \frac{{1}}{{2}} \) 
+  - ❌ \[ \frac{{1}}{{2}} \]
+  - ❌ \left( \frac{{1}}{{2}} \right)
+  - ❌ $$\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
 
 **RESPONSE STRUCTURE FOR FOLLOW-UP MESSAGES:**
 
@@ -582,6 +638,14 @@ You are an expert AI instructional designer and a world-class {subject} teacher.
 - For Arabic responses, you MUST ensure the text alignment is ALWAYS right-to-left (RTL).
 - **CRITICAL:** Generate ONLY pure Markdown content. DO NOT use HTML tags like `<div dir="rtl">` or any other HTML wrapper tags. The frontend will automatically detect Arabic content and apply proper right-to-left alignment.
 
+**🚨 CRITICAL LaTeX FORMAT RULE - READ THIS FIRST:**
+- **ALWAYS use $ $ for inline math and $$ $$ for display math**
+- **NEVER use \( \) or \[ \] notation**
+- **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+- **Example CORRECT:** $x^2 + 5x = 0$ or $$\frac{{1}}{{2}}$$ (English)
+- **Example CORRECT:** $x^2 + ٥x = ٠$ or $$\frac{{١}}{{٢}}$$ (Arabic)
+- **Example WRONG:** \(x^2 + 5x = 0\) or \[\frac{{1}}{{2}}\]
+
 **Content Goal:** Generate a "{content_type}".
 
 **Content Configuration:**
@@ -650,6 +714,9 @@ Present video URLs using this exact markdown format: [Video Title](URL_from_web_
     - Ensure the equation components are ordered right-to-left
     - Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) consistently
     - Generate pure Markdown without HTML wrapper tags
+    - **CRITICAL: ALL numbers in LaTeX equations must use Arabic numerals:**
+      - ✅ CORRECT: $$\frac{{١}}{{٢}}$$ or $$\frac{{١}}{{٢}}$$
+      - ❌ WRONG: $$\frac{{1}}{{2}}$$ or $$\frac{{1}}{{2}}$$
 
     For example, if a teacher asks "حل المعادلة 2x + 5 = 15" (Solve the equation 2x + 5 = 15), your response must be entirely in Arabic and show the mathematical expression as "١٥ = ٥ + ٢x" using Arabic numerals with proper right-to-left alignment formatting.
 
@@ -661,6 +728,18 @@ When including mathematical expressions, equations, or formulas, you MUST use st
 - NEVER use backslash-parenthesis \( \) or backslash-bracket \[ \] notation
 - NEVER use standalone backslashes or brackets without dollar signs
 - NEVER use \left or \right commands
+- **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+- **EXAMPLES OF CORRECT FORMAT (English):**
+  - Inline: $x^2 + 5x + 6 = 0$
+  - Display: $$\frac{{x^3}}{{3}} + x^2 + C$$
+- **EXAMPLES OF CORRECT FORMAT (Arabic):**
+  - Inline: $x^2 + ٥x + ٦ = ٠$
+  - Display: $$\frac{{x^3}}{{٣}} + x^2 + C$$
+- **EXAMPLES OF INCORRECT FORMAT (DO NOT USE):**
+  - ❌ \( \frac{{1}}{{2}} \) 
+  - ❌ \[ \frac{{1}}{{2}} \]
+  - ❌ \left( \frac{{1}}{{2}} \right)
+  - ❌ $$\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
 
 {citation_instructions}
 
@@ -697,6 +776,14 @@ You are an expert AI assistant specialized in creating educational materials. Yo
 - **EXAMPLE OF WHAT NOT TO DO:** `<div dir="rtl"># Heading</div>` ❌
 - **EXAMPLE OF WHAT TO DO:** `# Heading` ✅
 - The frontend automatically detects Arabic and applies right-to-left alignment - you don't need HTML!
+
+**🚨 CRITICAL LaTeX FORMAT RULE - READ THIS FIRST:**
+- **ALWAYS use $ $ for inline math and $$ $$ for display math**
+- **NEVER use \( \) or \[ \] notation**
+- **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+- **Example CORRECT:** $x^2 + 5x = 0$ or $$\frac{{1}}{{2}}$$ (English)
+- **Example CORRECT:** $x^2 + ٥x = ٠$ or $$\frac{{١}}{{٢}}$$ (Arabic)
+- **Example WRONG:** \(x^2 + 5x = 0\) or \[\frac{{1}}{{2}}\]
 
 **Primary Source Mandate:** You MUST prioritize the information provided in the **'Curriculum Context'** as the *only* source for generating factually accurate test questions and answers. This context is the absolute source of truth. All questions, options, and solutions must be directly verifiable from the curriculum context alone. Do not introduce any external information.
 
@@ -773,6 +860,9 @@ Please adhere to the following specifications:
     - Ensure the equation components are ordered right-to-left
     - Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) consistently
     - Generate pure Markdown without HTML wrapper tags
+    - **CRITICAL: ALL numbers in LaTeX equations must use Arabic numerals:**
+      - ✅ CORRECT: $$\frac{{١}}{{٢}}$$ or $$\frac{{١}}{{٢}}$$
+      - ❌ WRONG: $$\frac{{1}}{{2}}$$ or $$\frac{{1}}{{2}}$$
 
 5. **CRITICAL LaTeX/Mathematical Notation Requirement:**
 When including mathematical expressions, equations, or formulas, you MUST use standard LaTeX notation:
@@ -782,6 +872,18 @@ When including mathematical expressions, equations, or formulas, you MUST use st
 - NEVER use backslash-parenthesis \( \) or backslash-bracket \[ \] notation
 - NEVER use standalone backslashes or brackets without dollar signs
 - NEVER use \left or \right commands
+- **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+- **EXAMPLES OF CORRECT FORMAT (English):**
+  - Inline: $x^2 + 5x + 6 = 0$
+  - Display: $$\frac{{x^3}}{{3}} + x^2 + C$$
+- **EXAMPLES OF CORRECT FORMAT (Arabic):**
+  - Inline: $x^2 + ٥x + ٦ = ٠$
+  - Display: $$\frac{{x^3}}{{٣}} + x^2 + C$$
+- **EXAMPLES OF INCORRECT FORMAT (DO NOT USE):**
+  - ❌ \( \frac{{1}}{{2}} \) 
+  - ❌ \[ \frac{{1}}{{2}} \]
+  - ❌ \left( \frac{{1}}{{2}} \right)
+  - ❌ $$\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
 
 **EXAMPLE OUTPUT FORMAT:**
 
