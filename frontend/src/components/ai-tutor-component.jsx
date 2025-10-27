@@ -128,7 +128,7 @@ const AiTutor = () => {
     // NEW: Teacher feedback state
     const [teacherFeedback, setTeacherFeedback] = useState([]);
     const [showFeedbackOption, setShowFeedbackOption] = useState(false);
-    const [selectedFeedbackId, setSelectedFeedbackId] = useState('');
+    const [selectedFeedbackId, setSelectedFeedbackId] = useState('none');
 
     // NEW: Add subjects state
     const [availableSubjects, setAvailableSubjects] = useState([]);
@@ -1206,7 +1206,6 @@ Exported on: ${new Date().toLocaleDateString()}\\par\\par`;
                                                 <SelectValue placeholder="Choose feedback to use..." />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="none">No feedback</SelectItem>
                                                 {teacherFeedback.map((feedback) => (
                                                     <SelectItem key={feedback.id} value={feedback.id}>
                                                         <div className="flex items-center gap-2">
@@ -1214,9 +1213,11 @@ Exported on: ${new Date().toLocaleDateString()}\\par\\par`;
                                                                 {feedback.priority === 'high' ? '🔴' : feedback.priority === 'medium' ? '🟡' : '🟢'}
                                                             </span>
                                                             <span className="font-medium text-sm truncate">
-                                                                {feedback.topics && feedback.topics.length > 0 
-                                                                    ? feedback.topics[0] 
-                                                                    : `Feedback ${feedback.id.slice(-4)}`
+                                                                {feedback.focusAreas && feedback.focusAreas.length > 0 
+                                                                    ? feedback.focusAreas.join(', ')
+                                                                    : (feedback.topics && feedback.topics.length > 0 
+                                                                        ? feedback.topics[0] 
+                                                                        : 'General Feedback')
                                                                 }
                                                             </span>
                                                         </div>

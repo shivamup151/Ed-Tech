@@ -38,6 +38,23 @@ from media_toolkit.video_presentation_heygen import PPTXToHeyGenVideo, Cloudinar
 from storage import CloudflareR2Storage
 from langchain_openai import OpenAIEmbeddings
 
+# Initialize Perplexity chat for web search
+pplx_chat = None
+try:
+    from langchain_perplexity import ChatPerplexity
+    pplx_api_key = os.getenv("PPLX_API_KEY")
+    if pplx_api_key:
+        pplx_chat = ChatPerplexity(
+            temperature=0.7,
+            model="sonar",
+            pplx_api_key=pplx_api_key
+        )
+        logger.info("✅ Perplexity chat initialized successfully.")
+    else:
+        logger.warning("⚠️ PPLX_API_KEY not found. Web search will be disabled.")
+except Exception as e:
+    logger.warning(f"⚠️ Failed to initialize Perplexity chat: {e}")
+
 # --- FastAPI App Initialization ---
 app = FastAPI(
     title="AI Education Platform API",

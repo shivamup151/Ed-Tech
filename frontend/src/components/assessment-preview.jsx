@@ -265,48 +265,77 @@ export default function AssessmentPreview({
     const studentAnswer = studentAnswers[question.number] || answers[question.number] || answers[index];
     const correctAnswer = question.correctAnswer;
     
-    // Use saved evaluation results if available, otherwise fall back to basic comparison
+    // Always recalculate for MCQ/True-False to ensure correct comparison
     let isCorrect = false;
-    if (evaluationResults[question.number]) {
-      // Use the saved evaluation result from submission
-      isCorrect = evaluationResults[question.number].isCorrect;
-    } else {
-      // Fallback to basic comparison (for backward compatibility)
-      if (question.type === 'multiple_choice' || question.type === 'mcq') {
+    
+    // For MCQ and True/False, always recalculate to ensure proper letter/value comparison
+    if (question.type === 'multiple_choice' || question.type === 'mcq') {
         // For MCQ, extract the option letter from student answer and compare with correct answer
         let studentOptionLetter = '';
         if (studentAnswer !== undefined && studentAnswer !== null) {
-          const studentAnswerStr = studentAnswer.toString();
-          // Extract letter from format like "A. text" or "text (A)" or just "A" or "الخلايا" (Arabic text)
-          const letterMatch = studentAnswerStr.match(/^([A-D])\.|\(([A-D])\)$|^([A-D])$|^([A-D])\.\s*[^\s]|^[^\s]*\s*\(([A-D])\)$/);
+          const studentAnswerStr = studentAnswer.toString().trim();
+          // Extract letter from various formats: "A", "A)", "A.", "A) Text", "A. Text", etc.
+          const letterMatch = studentAnswerStr.match(/^([A-Da-d])[\.|\)|\s]?/);
           if (letterMatch) {
-            studentOptionLetter = letterMatch[1] || letterMatch[2] || letterMatch[3] || letterMatch[4] || letterMatch[5];
-          }
-          
-          // If no letter found, try to match the actual text content with options
-          if (!studentOptionLetter && question.options) {
-            const matchingOption = question.options.find(option => {
-              const optionText = option.replace(/^[A-D]\.\s*/, '').trim();
-              return optionText === studentAnswerStr.trim();
-            });
-            if (matchingOption) {
-              const optionLetterMatch = matchingOption.match(/^([A-D])\./);
-              if (optionLetterMatch) {
-                studentOptionLetter = optionLetterMatch[1];
+            studentOptionLetter = letterMatch[1].toUpperCase();
+          } else {
+            // If no letter at start, try to match the actual text content with options
+            if (question.options) {
+              const matchingOption = question.options.find(option => {
+                const optionText = option.replace(/^[A-D][\.\)\s]+/, '').trim();
+                const studentText = studentAnswerStr.replace(/^[A-D][\.\)\s]+/, '').trim();
+                return optionText.toLowerCase() === studentText.toLowerCase();
+              });
+              if (matchingOption) {
+                const optionLetterMatch = matchingOption.match(/^([A-D])/i);
+                if (optionLetterMatch) {
+                  studentOptionLetter = optionLetterMatch[1].toUpperCase();
+                }
               }
             }
           }
         }
-        isCorrect = studentOptionLetter && correctAnswer && 
-          studentOptionLetter.toUpperCase() === correctAnswer.toUpperCase();
-      } else if (question.type === 'true_false') {
-        isCorrect = studentAnswer !== undefined && correctAnswer !== undefined && 
-          studentAnswer.toString().toLowerCase() === correctAnswer.toLowerCase();
-      } else {
-        // For other question types, use basic string comparison
-        isCorrect = studentAnswer !== undefined && correctAnswer !== undefined && 
-          studentAnswer.toString().toLowerCase() === correctAnswer.toLowerCase();
-      }
+        
+        // Extract correct answer letter
+        let correctOptionLetter = '';
+        if (correctAnswer) {
+          const correctAnswerStr = correctAnswer.toString().trim();
+          // Extract just the letter from various formats
+          const correctLetterMatch = correctAnswerStr.match(/^([A-Da-d])[\.|\)|\s]?/);
+          if (correctLetterMatch) {
+            correctOptionLetter = correctLetterMatch[1].toUpperCase();
+          } else {
+            // If correct answer is just a single letter
+            if (/^[A-Da-d]$/.test(correctAnswerStr)) {
+              correctOptionLetter = correctAnswerStr.toUpperCase();
+            }
+          }
+        }
+        
+        // Debug logging
+        console.log('MCQ Comparison:', {
+          studentAnswer,
+          correctAnswer,
+          studentOptionLetter,
+          correctOptionLetter,
+          isCorrect: studentOptionLetter === correctOptionLetter
+        });
+        
+        isCorrect = studentOptionLetter && correctOptionLetter && 
+          studentOptionLetter === correctOptionLetter;
+    } else if (question.type === 'true_false') {
+      // For True/False, normalize both answers
+      const studentAnswerNormalized = studentAnswer ? studentAnswer.toString().toLowerCase().trim() : '';
+      const correctAnswerNormalized = correctAnswer ? correctAnswer.toString().toLowerCase().trim() : '';
+      isCorrect = studentAnswerNormalized === correctAnswerNormalized;
+    } else if (evaluationResults[question.number]) {
+      // For other question types, use saved evaluation result if available
+      isCorrect = evaluationResults[question.number].isCorrect;
+    } else {
+      // For other question types without evaluation results, use basic string comparison
+      const studentAnswerNormalized = studentAnswer ? studentAnswer.toString().toLowerCase().trim() : '';
+      const correctAnswerNormalized = correctAnswer ? correctAnswer.toString().toLowerCase().trim() : '';
+      isCorrect = studentAnswerNormalized === correctAnswerNormalized;
     }
 
 
@@ -647,4 +676,4 @@ export default function AssessmentPreview({
       </Dialog>
     </div>
   );
-}
+};
