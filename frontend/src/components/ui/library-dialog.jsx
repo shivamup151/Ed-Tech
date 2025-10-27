@@ -269,9 +269,14 @@ export default function LibraryDialog({
           <div className="h-full overflow-hidden">
             <div className="h-full overflow-auto p-4">
               <div className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownStyles}>
-                  {worksheetQuizContent}
-                </ReactMarkdown>
+                <div 
+                  dir={/[\u0600-\u06FF\u0750-\u077F]/.test(worksheetQuizContent) ? 'rtl' : 'ltr'}
+                  style={/[\u0600-\u06FF\u0750-\u077F]/.test(worksheetQuizContent) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+                >
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownStyles}>
+                    {worksheetQuizContent}
+                  </ReactMarkdown>
+                </div>
               </div>
             </div>
           </div>
@@ -543,9 +548,14 @@ export default function LibraryDialog({
             </div>
             <div className="flex-1 min-h-0 overflow-auto">
               <div className="prose prose-sm dark:prose-invert max-w-none pr-4">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownStyles}>
-                  {content.searchResults || content.content || ''}
-                </ReactMarkdown>
+                <div 
+                  dir={/[\u0600-\u06FF\u0750-\u077F]/.test(content.searchResults || content.content || '') ? 'rtl' : 'ltr'}
+                  style={/[\u0600-\u06FF\u0750-\u077F]/.test(content.searchResults || content.content || '') ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+                >
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={MarkdownStyles}>
+                    {content.searchResults || content.content || ''}
+                  </ReactMarkdown>
+                </div>
               </div>
             </div>
           </div>

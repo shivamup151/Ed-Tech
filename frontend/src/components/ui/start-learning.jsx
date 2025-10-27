@@ -1084,9 +1084,14 @@ const QuizWithInputs = ({ content, onAnswerChange, studentAnswers }) => {
   // Custom markdown component that handles input fields
   const CustomMarkdown = ({ content }) => {
     const parts = content.split(/(<!--INPUT_FIELD_question_\d+-->)/g);
+    const isArabic = /[\u0600-\u06FF\u0750-\u077F]/.test(content);
     
     return (
-      <div className="space-y-4">
+      <div 
+        className="space-y-4"
+        dir={isArabic ? 'rtl' : 'ltr'}
+        style={isArabic ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+      >
         {parts.map((part, index) => {
           if (part.match(/<!--INPUT_FIELD_question_(\d+)-->/)) {
             const questionId = part.match(/<!--INPUT_FIELD_question_(\d+)-->/)[1];
@@ -1099,6 +1104,8 @@ const QuizWithInputs = ({ content, onAnswerChange, studentAnswers }) => {
                   value={answers[fullQuestionId] || ''}
                   onChange={(e) => handleInputChange(fullQuestionId, e.target.value)}
                   className="min-h-[100px] w-full"
+                  dir={isArabic ? 'rtl' : 'ltr'}
+                  style={isArabic ? { direction: 'rtl', textAlign: 'right' } : {}}
                 />
               </div>
             );
@@ -1995,11 +2002,16 @@ export default function StartLearning({
               </div>
               <div className="flex-1 min-h-0 overflow-auto">
                 <div className="prose prose-sm dark:prose-invert max-w-none pr-4">
-                  <QuizWithInputs 
-                    content={content.content || content.generatedContent || content.assessmentContent || ''}
-                    onAnswerChange={handleAnswerChange}
-                    studentAnswers={studentAnswers}
-                  />
+                  <div 
+                    dir={/[\u0600-\u06FF\u0750-\u077F]/.test(content.content || content.generatedContent || content.assessmentContent || '') ? 'rtl' : 'ltr'}
+                    style={/[\u0600-\u06FF\u0750-\u077F]/.test(content.content || content.generatedContent || content.assessmentContent || '') ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+                  >
+                    <QuizWithInputs 
+                      content={content.content || content.generatedContent || content.assessmentContent || ''}
+                      onAnswerChange={handleAnswerChange}
+                      studentAnswers={studentAnswers}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="mt-4 flex justify-center flex-shrink-0">
@@ -2031,13 +2043,18 @@ export default function StartLearning({
             </div>
             <div className="flex-1 min-h-0 overflow-auto">
               <div className="prose prose-sm dark:prose-invert max-w-none pr-4">
-                <ReactMarkdown 
-                  remarkPlugins={[remarkGfm, remarkMath]} 
-                  rehypePlugins={[rehypeKatex, rehypeRaw]} 
-                  components={MarkdownStyles}
+                <div 
+                  dir={/[\u0600-\u06FF\u0750-\u077F]/.test(content.searchResults || content.generatedContent || content.content || '') ? 'rtl' : 'ltr'}
+                  style={/[\u0600-\u06FF\u0750-\u077F]/.test(content.searchResults || content.generatedContent || content.content || '') ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
                 >
-                  {content.searchResults || content.generatedContent || content.content || ''}
-                </ReactMarkdown>
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm, remarkMath]} 
+                    rehypePlugins={[rehypeKatex, rehypeRaw]} 
+                    components={MarkdownStyles}
+                  >
+                    {content.searchResults || content.generatedContent || content.content || ''}
+                  </ReactMarkdown>
+                </div>
               </div>
             </div>
             <div className="mt-4 flex justify-center flex-shrink-0">
