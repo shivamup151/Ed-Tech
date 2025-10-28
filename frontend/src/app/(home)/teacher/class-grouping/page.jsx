@@ -29,7 +29,7 @@ import {
   Plus, // NEW: Add this icon
 } from "lucide-react";
 import { toast } from "sonner";
-import { getStudents, updateStudentGroup, updateStudentNotes, getClassStatistics, addStudentFeedback, getStudentFeedback, deleteStudentFeedback } from "./action"; // NEW: Import feedback functions
+import { getStudents, updateStudentGroup, updateStudentNotes, getClassStatistics, addStudentFeedback, getStudentFeedback, deleteStudentFeedback, getStudentLearningFeedback } from "./action"; // NEW: Import feedback functions
 import { authClient } from "@/lib/auth-client";
 import Loading from "./loading";
 
@@ -53,6 +53,7 @@ export default function ClassGroupingPage() {
     improvements: [],
     priority: 'medium'
   });
+  const [studentLearningFeedback, setStudentLearningFeedback] = useState([]); // NEW: Student learning feedback
 
   // Get user session
   useEffect(() => {
@@ -121,6 +122,9 @@ export default function ClassGroupingPage() {
       } else {
         toast.error(statsResult.error || "Failed to load statistics");
       }
+
+      // Load student learning feedback
+      await loadStudentLearningFeedback();
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Failed to load data");
@@ -212,6 +216,21 @@ export default function ClassGroupingPage() {
     } catch (error) {
       console.error("Error submitting feedback:", error);
       toast.error("Failed to submit feedback");
+    }
+  };
+
+  // NEW: Load student learning feedback
+  const loadStudentLearningFeedback = async () => {
+    try {
+      // Pass null or undefined if no grade, the function will handle it
+      const result = await getStudentLearningFeedback(user?.grade || null);
+      if (result.success) {
+        setStudentLearningFeedback(result.feedback);
+      } else {
+        console.error("Error loading student learning feedback:", result.error);
+      }
+    } catch (error) {
+      console.error("Error loading student learning feedback:", error);
     }
   };
 
@@ -309,7 +328,7 @@ export default function ClassGroupingPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="all" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             All Students
@@ -322,6 +341,11 @@ export default function ClassGroupingPage() {
           <TabsTrigger value="groups" className="flex items-center gap-2">
             <PieChart className="h-4 w-4" />
             Groups
+          </TabsTrigger>
+          <TabsTrigger value="feedback" className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Student Feedback
+            <Badge variant="secondary">{studentLearningFeedback.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
@@ -539,6 +563,78 @@ export default function ClassGroupingPage() {
                 </Card>
               );
             })}
+          </div>
+        </TabsContent>
+
+        {/* Student Feedback Tab */}
+        <TabsContent value="feedback" className="mt-6">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Student Learning Feedback</h2>
+              <p className="text-sm text-muted-foreground">
+                Feedback from students {user?.grade ? `in your grade (${user.grade})` : '(all students)'}
+              </p>
+            </div>
+            
+            {studentLearningFeedback.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Student Feedback Yet</h3>
+                  <p className="text-muted-foreground text-center">
+                    Students haven't submitted any feedback from their learning activities yet.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {studentLearningFeedback.map((feedback) => (
+                  <Card key={feedback.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="h-10 w-10 bg-gradient-to-br from-green-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
+                            {feedback.studentName.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold">{feedback.studentName}</h3>
+                            <p className="text-sm text-muted-foreground">{feedback.studentEmail}</p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {feedback.grade}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <h4 className="font-medium text-sm text-muted-foreground mb-1">Content</h4>
+                        <p className="text-sm font-medium">{feedback.contentTitle}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {feedback.contentType} • {feedback.subject}
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium text-sm text-muted-foreground mb-1">Student Feedback</h4>
+                        <p className="text-sm bg-muted p-3 rounded-lg">
+                          {feedback.feedback}
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>
+                          {new Date(feedback.submittedAt).toLocaleDateString()}
+                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          Learning Feedback
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         </TabsContent>
 
