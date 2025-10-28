@@ -396,12 +396,43 @@ export async function addFeedback(contentId, feedback) {
       throw new Error('Unauthorized');
     }
 
+    // Validate feedback
     if (!feedback || feedback.trim().length === 0) {
       throw new Error('Feedback cannot be empty');
     }
 
+    if (feedback.trim().length < 10) {
+      throw new Error('Feedback must be at least 10 characters long');
+    }
+
+    if (feedback.trim().length > 1000) {
+      throw new Error('Feedback cannot exceed 1000 characters');
+    }
+
     const db = await getDbConnection();
     
+    // Check if feedback already exists for this content
+    const existingProgress = await db.collection('progress').findOne({
+      studentId: new ObjectId(session.user.id),
+      contentId: new ObjectId(contentId),
+      status: 'completed',
+      'completionData.feedback': { $exists: true, $ne: null, $ne: '' }
+    });
+
+    if (existingProgress) {
+      throw new Error('Feedback already exists for this content. Use update instead.');
+    }
+
+    // First, get the student's information to include grade
+    const student = await db.collection('user').findOne(
+      { _id: new ObjectId(session.user.id) },
+      { projection: { grade: 1, name: 1, email: 1 } }
+    );
+
+    if (!student) {
+      throw new Error('Student not found');
+    }
+
     const result = await db.collection('progress').findOneAndUpdate(
       {
         studentId: new ObjectId(session.user.id),
@@ -411,6 +442,13 @@ export async function addFeedback(contentId, feedback) {
       {
         $set: {
           'completionData.feedback': feedback.trim(),
+          'completionData.feedbackMetadata': {
+            studentId: session.user.id,
+            studentName: student.name || student.email,
+            studentGrade: student.grade || 'Unknown',
+            submittedAt: new Date(),
+            type: 'student_feedback'
+          },
           'metadata.updatedAt': new Date()
         }
       },
@@ -441,11 +479,30 @@ export async function updateFeedback(feedbackId, feedback) {
       throw new Error('Unauthorized');
     }
 
+    // Validate feedback
     if (!feedback || feedback.trim().length === 0) {
       throw new Error('Feedback cannot be empty');
     }
 
+    if (feedback.trim().length < 10) {
+      throw new Error('Feedback must be at least 10 characters long');
+    }
+
+    if (feedback.trim().length > 1000) {
+      throw new Error('Feedback cannot exceed 1000 characters');
+    }
+
     const db = await getDbConnection();
+    
+    // First, get the student's information to include grade
+    const student = await db.collection('user').findOne(
+      { _id: new ObjectId(session.user.id) },
+      { projection: { grade: 1, name: 1, email: 1 } }
+    );
+
+    if (!student) {
+      throw new Error('Student not found');
+    }
     
     const result = await db.collection('progress').findOneAndUpdate(
       {
@@ -456,6 +513,13 @@ export async function updateFeedback(feedbackId, feedback) {
       {
         $set: {
           'completionData.feedback': feedback.trim(),
+          'completionData.feedbackMetadata': {
+            studentId: session.user.id,
+            studentName: student.name || student.email,
+            studentGrade: student.grade || 'Unknown',
+            submittedAt: new Date(),
+            type: 'student_feedback'
+          },
           'metadata.updatedAt': new Date()
         }
       },

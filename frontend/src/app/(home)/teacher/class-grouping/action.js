@@ -480,3 +480,92 @@ export async function getClassStatistics() {
     };
   }
 }
+
+// NEW: Get student feedback from my-learning (progress collection)
+export async function getStudentLearningFeedback(teacherGrade) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.id) {
+      throw new Error('Unauthorized');
+    }
+
+    const { db } = await connectToDatabase();
+    
+    // Get all students in the same grade as the teacher, or all students if no grade specified
+    const studentQuery = teacherGrade && teacherGrade !== 'Unknown' && teacherGrade !== null
+      ? { role: 'student', grade: teacherGrade }
+      : { role: 'student' };
+      
+    const students = await db.collection('user').find(
+      studentQuery,
+      { projection: { _id: 1, name: 1, email: 1, grade: 1 } }
+    ).toArray();
+
+    if (students.length === 0) {
+      return {
+        success: true,
+        feedback: []
+      };
+    }
+
+    const studentIds = students.map(student => new ObjectId(student._id));
+    
+    // Get all progress records with feedback for these students
+    const progressWithFeedback = await db.collection('progress').find(
+      {
+        studentId: { $in: studentIds },
+        'completionData.feedback': { $exists: true, $ne: null, $ne: '' }
+      },
+      {
+        projection: {
+          studentId: 1,
+          contentId: 1,
+          contentTitle: 1,
+          contentType: 1,
+          subject: 1,
+          grade: 1,
+          'completionData.feedback': 1,
+          'completionData.feedbackMetadata': 1,
+          'completionData.completedAt': 1
+        }
+      }
+    ).sort({ 'completionData.completedAt': -1 }).toArray();
+
+    // Create a map of student info for quick lookup
+    const studentMap = {};
+    students.forEach(student => {
+      studentMap[student._id.toString()] = {
+        name: student.name || student.email,
+        email: student.email,
+        grade: student.grade
+      };
+    });
+
+    // Format the feedback data
+    const formattedFeedback = progressWithFeedback.map(progress => ({
+      id: `learning_feedback_${progress._id}`,
+      studentId: progress.studentId.toString(),
+      studentName: studentMap[progress.studentId.toString()]?.name || 'Unknown Student',
+      studentEmail: studentMap[progress.studentId.toString()]?.email || '',
+      contentTitle: progress.contentTitle,
+      contentType: progress.contentType,
+      subject: progress.subject,
+      grade: progress.grade,
+      feedback: progress.completionData.feedback,
+      submittedAt: progress.completionData.feedbackMetadata?.submittedAt || progress.completionData.completedAt,
+      type: 'student_learning_feedback',
+      contentId: progress.contentId.toString()
+    }));
+
+    return {
+      success: true,
+      feedback: formattedFeedback
+    };
+  } catch (error) {
+    console.error("Error fetching student learning feedback:", error);
+    return {
+      success: false,
+      error: "Failed to fetch student learning feedback"
+    };
+  }
+}
