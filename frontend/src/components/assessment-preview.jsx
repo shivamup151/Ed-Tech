@@ -561,15 +561,15 @@ export default function AssessmentPreview({
                         </div>
                       ) : (
                         // For non-Arabic content, use ReactMarkdown with LaTeX support
-                        <div className="prose prose-xs max-w-none dark:prose-invert">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm, remarkMath]}
-                            rehypePlugins={[rehypeKatex, rehypeRaw]}
-                            components={MarkdownStyles}
-                          >
-                            {option.text}
-                          </ReactMarkdown>
-                        </div>
+                      <div className="prose prose-xs max-w-none dark:prose-invert">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm, remarkMath]}
+                          rehypePlugins={[rehypeKatex, rehypeRaw]}
+                          components={MarkdownStyles}
+                        >
+                          {option.text}
+                        </ReactMarkdown>
+                      </div>
                       )}
                     </span>
                     {isReviewMode && isCorrectOption && (
@@ -665,7 +665,7 @@ export default function AssessmentPreview({
               </div>
               <div 
                 className="w-full min-h-[2rem] p-3 bg-white dark:bg-gray-800 rounded border border-blue-200 dark:border-blue-700"
-                dir={/[\u0600-\u06FF\u0750-\u077F]/.test(correctAnswer) ? 'rtl' : 'ltr'}
+              dir={/[\u0600-\u06FF\u0750-\u077F]/.test(correctAnswer) ? 'rtl' : 'ltr'}
                 style={/[\u0600-\u06FF\u0750-\u077F]/.test(correctAnswer) ? { 
                   direction: 'rtl', 
                   textAlign: 'right', 
@@ -713,14 +713,14 @@ export default function AssessmentPreview({
                       whiteSpace: 'pre-wrap'
                     }}
                   >
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm, remarkMath]}
-                      rehypePlugins={[rehypeKatex, rehypeRaw]}
-                      components={MarkdownStyles}
-                    >
-                      {correctAnswer}
-                    </ReactMarkdown>
-                  </div>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex, rehypeRaw]}
+                  components={MarkdownStyles}
+                >
+                  {correctAnswer}
+                </ReactMarkdown>
+              </div>
                 )}
               </div>
             </div>

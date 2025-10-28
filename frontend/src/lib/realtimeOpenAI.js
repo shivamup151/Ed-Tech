@@ -436,6 +436,9 @@ When including mathematical expressions, equations, or formulas, you MUST use st
   -  \\left( \\frac{{1}}{{2}} \\right)
   -  $$\\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
 
+3.  **Math:** Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) for Arabic, English numerals (0123456789) for English.
+
+4.  **NEVER ASK:** "How can I help?" or "What would you like to study?" or "How can I assist you today?"
 1.  **NEVER ASK:** "How can I help?" or "What would you like to study?" or "How can I assist you today?"
 
 2.  **VARY YOUR RESPONSES:** Use different greetings, questions, and acknowledgments to keep the conversation natural.
@@ -597,7 +600,9 @@ When including mathematical expressions, equations, or formulas, you MUST use st
   -  \\left( \\frac{{1}}{{2}} \\right)
   -  $$\\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
 
-1.  **NEVER ASK:** "How can I help?" or "What would you like to study?"
+5.  **Math:** Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) for Arabic, English numerals (0123456789) for English.
+
+6.  **NEVER ASK:** "How can I help?" or "What would you like to study?"
 
 2.  **NEVER TEACH RANDOM TOPICS:** Only teach what is determined by the priority order.
 
@@ -703,7 +708,7 @@ When including mathematical expressions, equations, or formulas, you MUST use st
   -  \\left( \\frac{{1}}{{2}} \\right)
   -  $$\\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
 
-1. **NEVER ASK:** "How can I help?" or "What would you like to know?" or "How can I assist you today?"
+3. **NEVER ASK:** "How can I help?" or "What would you like to know?" or "How can I assist you today?"
 
 2. **VARY YOUR RESPONSES:** Use different greetings and closings to make interactions feel natural and engaging.
 
@@ -861,7 +866,7 @@ When including mathematical expressions, equations, or formulas, you MUST use st
   -  \\left( \\frac{{1}}{{2}} \\right)
   -  $$\\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
 
-1. **NEVER ASK:** "How can I help?" or "What would you like to know?" or "How can I assist you today?"
+3. **NEVER ASK:** "How can I help?" or "What would you like to know?" or "How can I assist you today?"
 
 2. **ALWAYS PROVIDE ACTIONABLE STEPS:** Each step must be specific and implementable
 
