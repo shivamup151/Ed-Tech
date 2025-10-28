@@ -622,10 +622,7 @@ export default function ClassGroupingPage() {
                         </p>
                       </div>
                       
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>
-                          {new Date(feedback.submittedAt).toLocaleDateString()}
-                        </span>
+                      <div className="flex items-center justify-end text-xs text-muted-foreground">
                         <Badge variant="secondary" className="text-xs">
                           Learning Feedback
                         </Badge>
