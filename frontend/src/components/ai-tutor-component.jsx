@@ -773,42 +773,18 @@ const AiTutor = () => {
                 dir={/[\u0600-\u06FF\u0750-\u077F]/.test(content) ? 'rtl' : 'ltr'}
                 style={/[\u0600-\u06FF\u0750-\u077F]/.test(content) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
             >
-                {/[\u0600-\u06FF\u0750-\u077F]/.test(content) ? (
-                    // For Arabic content, render as plain text with proper mathematical formatting
-                    <div 
-                        className="text-base font-medium"
-                        style={{ 
-                            wordBreak: 'break-word', 
-                            overflowWrap: 'anywhere',
-                            whiteSpace: 'pre-wrap',
-                            fontFamily: 'Arial, sans-serif',
-                            fontSize: '16px',
-                            lineHeight: '1.6'
-                        }}
-                        dangerouslySetInnerHTML={{
-                            __html: content
-                                .replace(/\$\$?([^$]+)\$\$?/g, '$1')
-                                .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, (match, numerator, denominator) => {
-                                    return `${numerator}/${denominator}`;
-                                })
-                                .replace(/\\sqrt\{([^}]*)\}/g, '√$1')
-                                .replace(/\\[a-zA-Z]+/g, '')
-                                .replace(/[{}]/g, '')
-                                .replace(/\^(\d+)/g, '<sup>$1</sup>')
-                                .replace(/_(\d+)/g, '<sub>$1</sub>')
-                                .replace(/\n/g, '<br>')
-                        }}
-                    />
-                ) : (
-                    // For non-Arabic content, use ReactMarkdown with LaTeX support
-                    <ReactMarkdown 
-                        remarkPlugins={[remarkGfm, remarkMath]}
-                        rehypePlugins={[rehypeKatex, rehypeRaw]}
-                        components={MarkdownStyles}
-                    >
-                        {content}
-                    </ReactMarkdown>
-                )}
+                <ReactMarkdown 
+                    remarkPlugins={/[\u0600-\u06FF\u0750-\u077F]/.test(content) ? [remarkGfm] : [remarkGfm, remarkMath]}
+                    rehypePlugins={/[\u0600-\u06FF\u0750-\u077F]/.test(content) ? [rehypeRaw] : [rehypeKatex, rehypeRaw]}
+                    components={MarkdownStyles}
+                >
+                    {/[\u0600-\u06FF\u0750-\u077F]/.test(content) ? 
+                        content.replace(/\$\$?([^$]+)\$\$?/g, '$1').replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, (match, numerator, denominator) => {
+                            return `${numerator}/${denominator}`;
+                        }).replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '') : 
+                        content
+                    }
+                </ReactMarkdown>
             </div>
         );
     };
@@ -825,42 +801,18 @@ const AiTutor = () => {
                         dir={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? 'rtl' : 'ltr'}
                         style={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
                     >
-                        {/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? (
-                            // For Arabic content, render as plain text with proper mathematical formatting
-                            <div 
-                                className="text-base font-medium"
-                                style={{ 
-                                    wordBreak: 'break-word', 
-                                    overflowWrap: 'anywhere',
-                                    whiteSpace: 'pre-wrap',
-                                    fontFamily: 'Arial, sans-serif',
-                                    fontSize: '16px',
-                                    lineHeight: '1.6'
-                                }}
-                                dangerouslySetInnerHTML={{
-                                    __html: message.content
-                                        .replace(/\$\$?([^$]+)\$\$?/g, '$1')
-                                        .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, (match, numerator, denominator) => {
-                                            return `${numerator}/${denominator}`;
-                                        })
-                                        .replace(/\\sqrt\{([^}]*)\}/g, '√$1')
-                                        .replace(/\\[a-zA-Z]+/g, '')
-                                        .replace(/[{}]/g, '')
-                                        .replace(/\^(\d+)/g, '<sup>$1</sup>')
-                                        .replace(/_(\d+)/g, '<sub>$1</sub>')
-                                        .replace(/\n/g, '<br>')
-                                }}
-                            />
-                        ) : (
-                            // For non-Arabic content, use ReactMarkdown with LaTeX support
-                            <ReactMarkdown 
-                                remarkPlugins={[remarkGfm, remarkMath]}
-                                rehypePlugins={[rehypeKatex, rehypeRaw]}
-                                components={MarkdownStyles}
-                            >
-                                {message.content}
-                            </ReactMarkdown>
-                        )}
+                        <ReactMarkdown 
+                            remarkPlugins={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? [remarkGfm] : [remarkGfm, remarkMath]}
+                            rehypePlugins={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? [rehypeRaw] : [rehypeKatex, rehypeRaw]}
+                            components={MarkdownStyles}
+                        >
+                            {/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? 
+                                message.content.replace(/\$\$?([^$]+)\$\$?/g, '$1').replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, (match, numerator, denominator) => {
+                                    return `${numerator}/${denominator}`;
+                                }).replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '') : 
+                                message.content
+                            }
+                        </ReactMarkdown>
                     </div>
                     {/* Copy button - only show for AI messages */}
                     {message.type === 'ai' && (
