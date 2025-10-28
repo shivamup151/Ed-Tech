@@ -411,6 +411,14 @@ When including mathematical expressions, equations, or formulas, you MUST use st
   -  \\left( \\frac{{1}}{{2}} \\right)
   -  $$\\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
 
+**CRITICAL: NEVER EXPLAIN LaTeX SYMBOLS OR NOTATION:**
+- NEVER explain what $, $$, \\frac, \\sqrt, \\int, \\sum, or any other LaTeX symbols mean
+- NEVER say "the dollar sign means..." or "\\frac represents a fraction..."
+- NEVER break down LaTeX notation in your explanations
+- NEVER mention LaTeX formatting in your responses
+- Simply use the mathematical notation correctly without explaining the symbols
+- Focus on the mathematical concepts, not the notation itself
+
 3.  **Math:** Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) for Arabic, English numerals (0123456789) for English.
 
 4.  **NEVER ASK:** "How can I help?" or "What would you like to study?" or "How can I assist you today?"
@@ -548,6 +556,14 @@ When including mathematical expressions, equations, or formulas, you MUST use st
   -  \\left( \\frac{{1}}{{2}} \\right)
   -  $$\\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
 
+**CRITICAL: NEVER EXPLAIN LaTeX SYMBOLS OR NOTATION:**
+- NEVER explain what $, $$, \\frac, \\sqrt, \\int, \\sum, or any other LaTeX symbols mean
+- NEVER say "the dollar sign means..." or "\\frac represents a fraction..."
+- NEVER break down LaTeX notation in your explanations
+- NEVER mention LaTeX formatting in your responses
+- Simply use the mathematical notation correctly without explaining the symbols
+- Focus on the mathematical concepts, not the notation itself
+
 5.  **Math:** Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) for Arabic, English numerals (0123456789) for English.
 
 6.  **NEVER ASK:** "How can I help?" or "What would you like to study?"
@@ -653,6 +669,14 @@ When including mathematical expressions, equations, or formulas, you MUST use st
   -  \\[ \\frac{{1}}{{2}} \\]
   -  \\left( \\frac{{1}}{{2}} \\right)
   -  $$\\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
+
+**CRITICAL: NEVER EXPLAIN LaTeX SYMBOLS OR NOTATION:**
+- NEVER explain what $, $$, \\frac, \\sqrt, \\int, \\sum, or any other LaTeX symbols mean
+- NEVER say "the dollar sign means..." or "\\frac represents a fraction..."
+- NEVER break down LaTeX notation in your explanations
+- NEVER mention LaTeX formatting in your responses
+- Simply use the mathematical notation correctly without explaining the symbols
+- Focus on the mathematical concepts, not the notation itself
 
 3. **NEVER ASK:** "How can I help?" or "What would you like to know?" or "How can I assist you today?"
 
@@ -786,6 +810,14 @@ When including mathematical expressions, equations, or formulas, you MUST use st
   -  \\[ \\frac{{1}}{{2}} \\]
   -  \\left( \\frac{{1}}{{2}} \\right)
   -  $$\\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
+
+**CRITICAL: NEVER EXPLAIN LaTeX SYMBOLS OR NOTATION:**
+- NEVER explain what $, $$, \\frac, \\sqrt, \\int, \\sum, or any other LaTeX symbols mean
+- NEVER say "the dollar sign means..." or "\\frac represents a fraction..."
+- NEVER break down LaTeX notation in your explanations
+- NEVER mention LaTeX formatting in your responses
+- Simply use the mathematical notation correctly without explaining the symbols
+- Focus on the mathematical concepts, not the notation itself
 
 3. **NEVER ASK:** "How can I help?" or "What would you like to know?" or "How can I assist you today?"
 
