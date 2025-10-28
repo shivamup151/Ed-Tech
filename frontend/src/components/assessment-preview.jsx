@@ -348,25 +348,46 @@ export default function AssessmentPreview({
 
     return (
       <div key={index} className="border rounded-lg p-4 mb-4">
-        <div className="flex items-start justify-between mb-3">
-          <h3 
-            className="font-medium text-base"
+        <div className="flex items-start justify-between mb-4">
+          <div 
+            className="flex-1 pr-3"
             dir={/[\u0600-\u06FF\u0750-\u077F]/.test(question.text) ? 'rtl' : 'ltr'}
-            style={/[\u0600-\u06FF\u0750-\u077F]/.test(question.text) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+            style={/[\u0600-\u06FF\u0750-\u077F]/.test(question.text) ? { 
+              direction: 'rtl', 
+              textAlign: 'right', 
+              unicodeBidi: 'embed',
+              fontFamily: 'Arial, sans-serif',
+              fontSize: '16px',
+              lineHeight: '1.6'
+            } : {
+              fontFamily: 'Arial, sans-serif',
+              fontSize: '16px',
+              lineHeight: '1.6'
+            }}
           >
-            <div className="prose prose-sm max-w-none dark:prose-invert">
+            <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-gray-100">
+              Question {question.number}:
+            </h3>
+            <div className="prose prose-base max-w-none dark:prose-invert" style={{ 
+              wordBreak: 'break-word', 
+              overflowWrap: 'anywhere',
+              whiteSpace: 'pre-wrap'
+            }}>
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeKatex, rehypeRaw]}
                 components={MarkdownStyles}
               >
-                {`Question ${question.number}: ${question.text}`}
+                {question.type === 'true_false' 
+                  ? question.text.replace(/\s*(True or False\?|صح أم خطأ\?|صحيح أم خاطئ\?)\s*$/i, '').trim()
+                  : question.text
+                }
               </ReactMarkdown>
             </div>
-          </h3>
+          </div>
           {isReviewMode && correctAnswer && isCorrect && (
-            <div className="flex items-center gap-1 ml-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
+            <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+              <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
           )}
         </div>
@@ -375,37 +396,81 @@ export default function AssessmentPreview({
         {isReviewMode && (
           <>
             {studentAnswer !== undefined && studentAnswer !== null && studentAnswer !== '' ? (
-              <div className={`p-3 rounded-lg border-2 mb-3 ${
+              <div className={`p-4 rounded-lg border-2 mb-3 ${
                 isCorrect 
                   ? 'bg-green-50 border-green-500 text-green-900' 
                   : 'bg-red-50 border-red-500 text-red-900'
               }`}>
-                <div className="flex items-start gap-2">
+                <div className="flex items-start gap-3">
                   {isCorrect && (
-                    <CheckCircle className="h-4 w-4 text-green-600 mt-1 flex-shrink-0" />
+                    <CheckCircle className="h-5 w-5 text-green-600 mt-1 flex-shrink-0" />
                   )}
                   <div className="flex-1">
-                    <span className="font-medium">Your Answer:</span>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold text-base">Your Answer:</span>
+                    </div>
                     <div 
-                      className="mt-1 break-words overflow-wrap-anywhere"
+                      className="w-full min-h-[2rem] p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700"
                       dir={/[\u0600-\u06FF\u0750-\u077F]/.test(studentAnswer) ? 'rtl' : 'ltr'}
-                      style={/[\u0600-\u06FF\u0750-\u077F]/.test(studentAnswer) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+                      style={/[\u0600-\u06FF\u0750-\u077F]/.test(studentAnswer) ? { 
+                        direction: 'rtl', 
+                        textAlign: 'right', 
+                        unicodeBidi: 'embed',
+                        fontFamily: 'Arial, sans-serif',
+                        fontSize: '16px',
+                        lineHeight: '1.6'
+                      } : {
+                        fontFamily: 'Arial, sans-serif',
+                        fontSize: '16px',
+                        lineHeight: '1.6'
+                      }}
                     >
-                      <div className="prose prose-xs max-w-none dark:prose-invert" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm, remarkMath]}
-                          rehypePlugins={[rehypeKatex, rehypeRaw]}
-                          components={MarkdownStyles}
+                      {/[\u0600-\u06FF\u0750-\u077F]/.test(studentAnswer) ? (
+                        // For Arabic content, render as plain text to avoid LaTeX processing issues
+                        <div 
+                          className="text-base font-medium"
+                          style={{ 
+                            wordBreak: 'break-word', 
+                            overflowWrap: 'anywhere',
+                            whiteSpace: 'pre-wrap',
+                            fontFamily: 'Arial, sans-serif',
+                            fontSize: '16px',
+                            lineHeight: '1.6'
+                          }}
                         >
-                          {studentAnswer}
-                        </ReactMarkdown>
-                      </div>
+                          {studentAnswer.replace(/\$\$?([^$]+)\$\$?/g, '$1').replace(/\\frac\{[^}]*\}\{[^}]*\}/g, (match) => {
+                            // Extract numerator and denominator from \frac{numerator}{denominator}
+                            const fracMatch = match.match(/\\frac\{([^}]*)\}\{([^}]*)\}/);
+                            if (fracMatch) {
+                              const numerator = fracMatch[1];
+                              const denominator = fracMatch[2];
+                              return `${numerator}/${denominator}`;
+                            }
+                            return match;
+                          }).replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '')}
+                        </div>
+                      ) : (
+                        // For non-Arabic content, use ReactMarkdown with LaTeX support
+                        <div className="prose prose-sm max-w-none dark:prose-invert" style={{ 
+                          wordBreak: 'break-word', 
+                          overflowWrap: 'anywhere',
+                          whiteSpace: 'pre-wrap'
+                        }}>
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm, remarkMath]}
+                            rehypePlugins={[rehypeKatex, rehypeRaw]}
+                            components={MarkdownStyles}
+                          >
+                            {studentAnswer}
+                          </ReactMarkdown>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="p-3 rounded-lg border-2 mb-3 bg-gray-50 border-gray-300 text-gray-600">
+              <div className="p-4 rounded-lg border-2 mb-3 bg-gray-50 border-gray-300 text-gray-600">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">No answer provided</span>
                 </div>
@@ -457,17 +522,55 @@ export default function AssessmentPreview({
                     <span 
                       className="flex-1"
                       dir={/[\u0600-\u06FF\u0750-\u077F]/.test(option.text) ? 'rtl' : 'ltr'}
-                      style={/[\u0600-\u06FF\u0750-\u077F]/.test(option.text) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+                      style={/[\u0600-\u06FF\u0750-\u077F]/.test(option.text) ? { 
+                        direction: 'rtl', 
+                        textAlign: 'right', 
+                        unicodeBidi: 'embed',
+                        fontFamily: 'Arial, sans-serif',
+                        fontSize: '14px',
+                        lineHeight: '1.5'
+                      } : {
+                        fontFamily: 'Arial, sans-serif',
+                        fontSize: '14px',
+                        lineHeight: '1.5'
+                      }}
                     >
-                      <div className="prose prose-xs max-w-none dark:prose-invert">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm, remarkMath]}
-                          rehypePlugins={[rehypeKatex, rehypeRaw]}
-                          components={MarkdownStyles}
+                      {/[\u0600-\u06FF\u0750-\u077F]/.test(option.text) ? (
+                        // For Arabic content, render as plain text to avoid LaTeX processing issues
+                        <div 
+                          className="text-sm font-medium"
+                          style={{ 
+                            wordBreak: 'break-word', 
+                            overflowWrap: 'anywhere',
+                            whiteSpace: 'pre-wrap',
+                            fontFamily: 'Arial, sans-serif',
+                            fontSize: '14px',
+                            lineHeight: '1.5'
+                          }}
                         >
-                          {option.text}
-                        </ReactMarkdown>
-                      </div>
+                          {option.text.replace(/\$\$?([^$]+)\$\$?/g, '$1').replace(/\\frac\{[^}]*\}\{[^}]*\}/g, (match) => {
+                            // Extract numerator and denominator from \frac{numerator}{denominator}
+                            const fracMatch = match.match(/\\frac\{([^}]*)\}\{([^}]*)\}/);
+                            if (fracMatch) {
+                              const numerator = fracMatch[1];
+                              const denominator = fracMatch[2];
+                              return `${numerator}/${denominator}`;
+                            }
+                            return match;
+                          }).replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '')}
+                        </div>
+                      ) : (
+                        // For non-Arabic content, use ReactMarkdown with LaTeX support
+                        <div className="prose prose-xs max-w-none dark:prose-invert">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm, remarkMath]}
+                            rehypePlugins={[rehypeKatex, rehypeRaw]}
+                            components={MarkdownStyles}
+                          >
+                            {option.text}
+                          </ReactMarkdown>
+                        </div>
+                      )}
                     </span>
                     {isReviewMode && isCorrectOption && (
                       <CheckCircle className="h-4 w-4 text-green-600" />
@@ -555,23 +658,70 @@ export default function AssessmentPreview({
 
         {/* Show correct answer in review mode or preview mode */}
         {(isReviewMode || isPreviewMode) && correctAnswer && (
-          <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+          <div className="mt-2 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <div className="text-sm text-blue-700 dark:text-blue-400">
-              <strong>Correct Answer:</strong>
+              <div className="flex items-center justify-between mb-3">
+                <strong className="text-base font-semibold">Correct Answer:</strong>
+              </div>
               <div 
-                className="mt-2 break-words overflow-wrap-anywhere"
+                className="w-full min-h-[2rem] p-3 bg-white dark:bg-gray-800 rounded border border-blue-200 dark:border-blue-700"
                 dir={/[\u0600-\u06FF\u0750-\u077F]/.test(correctAnswer) ? 'rtl' : 'ltr'}
-                style={/[\u0600-\u06FF\u0750-\u077F]/.test(correctAnswer) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+                style={/[\u0600-\u06FF\u0750-\u077F]/.test(correctAnswer) ? { 
+                  direction: 'rtl', 
+                  textAlign: 'right', 
+                  unicodeBidi: 'embed',
+                  fontFamily: 'Arial, sans-serif',
+                  fontSize: '16px',
+                  lineHeight: '1.6'
+                } : {
+                  fontFamily: 'Arial, sans-serif',
+                  fontSize: '16px',
+                  lineHeight: '1.6'
+                }}
               >
-                <div className="prose prose-sm max-w-none dark:prose-invert" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm, remarkMath]}
-                    rehypePlugins={[rehypeKatex, rehypeRaw]}
-                    components={MarkdownStyles}
+                {/[\u0600-\u06FF\u0750-\u077F]/.test(correctAnswer) ? (
+                  // For Arabic content, render as plain text to avoid LaTeX processing issues
+                  <div 
+                    className="text-base font-medium"
+                    style={{ 
+                      wordBreak: 'break-word', 
+                      overflowWrap: 'anywhere',
+                      whiteSpace: 'pre-wrap',
+                      fontFamily: 'Arial, sans-serif',
+                      fontSize: '16px',
+                      lineHeight: '1.6'
+                    }}
                   >
-                    {correctAnswer}
-                  </ReactMarkdown>
-                </div>
+                    {correctAnswer.replace(/\$\$?([^$]+)\$\$?/g, '$1').replace(/\\frac\{[^}]*\}\{[^}]*\}/g, (match) => {
+                      // Extract numerator and denominator from \frac{numerator}{denominator}
+                      const fracMatch = match.match(/\\frac\{([^}]*)\}\{([^}]*)\}/);
+                      if (fracMatch) {
+                        const numerator = fracMatch[1];
+                        const denominator = fracMatch[2];
+                        return `${numerator}/${denominator}`;
+                      }
+                      return match;
+                    }).replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '')}
+                  </div>
+                ) : (
+                  // For non-Arabic content, use ReactMarkdown with LaTeX support
+                  <div 
+                    className="prose prose-sm max-w-none dark:prose-invert" 
+                    style={{ 
+                      wordBreak: 'break-word', 
+                      overflowWrap: 'anywhere',
+                      whiteSpace: 'pre-wrap'
+                    }}
+                  >
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeKatex, rehypeRaw]}
+                      components={MarkdownStyles}
+                    >
+                      {correctAnswer}
+                    </ReactMarkdown>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -18,7 +18,29 @@ export const generateDOCX = async (content, filename, options = {}) => {
   try {
     const { title = '', subtitle = '', includeHeader = true } = options;
     const hasArabic = /[\u0600-\u06FF]/.test(content);
-    const lines = content.split('\n');
+    
+    // Clean up LaTeX fractions and artifacts for Arabic content
+    let cleanedContent = content;
+    if (hasArabic) {
+      // Convert \frac{numerator}{denominator} to numerator/denominator
+      cleanedContent = cleanedContent.replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, (match, numerator, denominator) => {
+        return `${numerator}/${denominator}`;
+      });
+      
+      // Remove other LaTeX commands
+      cleanedContent = cleanedContent.replace(/\\[a-zA-Z]+/g, '');
+      
+      // Remove curly braces
+      cleanedContent = cleanedContent.replace(/[{}]/g, '');
+      
+      // Remove dollar signs
+      cleanedContent = cleanedContent.replace(/\$\$?([^$]+)\$\$?/g, '$1');
+      
+      // Clean up any remaining LaTeX artifacts
+      cleanedContent = cleanedContent.replace(/\{[^}]*\}/g, '');
+    }
+    
+    const lines = cleanedContent.split('\n');
     const docElements = [];
 
     // --- Common paragraph properties for Arabic ---
@@ -32,7 +54,10 @@ export const generateDOCX = async (content, filename, options = {}) => {
     // --- Add title ---
     if (includeHeader && title) {
       docElements.push(new Paragraph({
-        text: title,
+        children: [new TextRun({ 
+          text: title,
+          ...(hasArabic && { font: 'Arial Unicode MS' })
+        })],
         heading: HeadingLevel.HEADING_1,
         spacing: { after: 200 },
         ...(hasArabic && arabicParagraphOptions) // Apply RTL properties if Arabic
@@ -40,7 +65,10 @@ export const generateDOCX = async (content, filename, options = {}) => {
       
       if (subtitle) {
         docElements.push(new Paragraph({
-          text: subtitle,
+          children: [new TextRun({ 
+            text: subtitle,
+            ...(hasArabic && { font: 'Arial Unicode MS' })
+          })],
           heading: HeadingLevel.HEADING_2,
           spacing: { after: 200 },
           ...(hasArabic && arabicParagraphOptions)
@@ -64,41 +92,74 @@ export const generateDOCX = async (content, filename, options = {}) => {
       if (line.startsWith('# ')) {
         paragraph = new Paragraph({ 
           ...baseOptions, 
-          text: line.replace('# ', ''), 
+          children: [new TextRun({ 
+            text: line.replace('# ', ''), 
+            ...(hasArabic && { font: 'Arial Unicode MS' })
+          })],
           heading: HeadingLevel.HEADING_1 
         });
       } else if (line.startsWith('## ')) {
         paragraph = new Paragraph({ 
           ...baseOptions, 
-          text: line.replace('## ', ''), 
+          children: [new TextRun({ 
+            text: line.replace('## ', ''), 
+            ...(hasArabic && { font: 'Arial Unicode MS' })
+          })],
           heading: HeadingLevel.HEADING_2 
         });
       } else if (line.startsWith('### ')) {
         paragraph = new Paragraph({ 
           ...baseOptions, 
-          text: line.replace('### ', ''), 
+          children: [new TextRun({ 
+            text: line.replace('### ', ''), 
+            ...(hasArabic && { font: 'Arial Unicode MS' })
+          })],
           heading: HeadingLevel.HEADING_3 
         });
       } else if (line.match(/^\d+\./)) {
         // Handle numbered lists with bolding
         paragraph = new Paragraph({ 
           ...baseOptions, 
-          children: [new TextRun({ text: line, bold: true })] 
+          children: [new TextRun({ 
+            text: line, 
+            bold: true,
+            ...(hasArabic && { font: 'Arial Unicode MS' })
+          })] 
         });
       } else if (line.match(/^[A-D]\)/)) {
         // Handle options
         paragraph = new Paragraph({ 
           ...baseOptions, 
-          children: [new TextRun({ text: line })] 
+          children: [new TextRun({ 
+            text: line,
+            ...(hasArabic && { font: 'Arial Unicode MS' })
+          })] 
         });
       } else {
-         // Handle regular text with bolding
-        const children = line.split(/(\*\*.*?\*\*)/g).map(part => {
+         // Handle regular text with bolding and other formatting
+        const children = [];
+        
+        // Split by bold markers and process each part
+        const boldParts = line.split(/(\*\*.*?\*\*)/g);
+        
+        for (const part of boldParts) {
           if (part.startsWith('**') && part.endsWith('**')) {
-            return new TextRun({ text: part.slice(2, -2), bold: true });
+            // Bold text
+            const boldText = part.slice(2, -2);
+            children.push(new TextRun({ 
+              text: boldText, 
+              bold: true,
+              ...(hasArabic && { font: 'Arial Unicode MS' }) // Use Unicode font for Arabic
+            }));
+          } else if (part.trim()) {
+            // Regular text
+            children.push(new TextRun({ 
+              text: part,
+              ...(hasArabic && { font: 'Arial Unicode MS' }) // Use Unicode font for Arabic
+            }));
           }
-          return new TextRun({ text: part });
-        });
+        }
+        
         paragraph = new Paragraph({ ...baseOptions, children });
       }
       
@@ -138,8 +199,31 @@ export const generateDOCX = async (content, filename, options = {}) => {
  */
 export const generateMarkdown = (content, filename) => {
   try {
+    // Clean up LaTeX fractions and artifacts for Arabic content (same as DOCX)
+    let cleanedContent = content;
+    const hasArabic = /[\u0600-\u06FF]/.test(content);
+    
+    if (hasArabic) {
+      // Convert \frac{numerator}{denominator} to numerator/denominator
+      cleanedContent = cleanedContent.replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, (match, numerator, denominator) => {
+        return `${numerator}/${denominator}`;
+      });
+      
+      // Remove other LaTeX commands
+      cleanedContent = cleanedContent.replace(/\\[a-zA-Z]+/g, '');
+      
+      // Remove curly braces
+      cleanedContent = cleanedContent.replace(/[{}]/g, '');
+      
+      // Remove dollar signs
+      cleanedContent = cleanedContent.replace(/\$\$?([^$]+)\$\$?/g, '$1');
+      
+      // Clean up any remaining LaTeX artifacts
+      cleanedContent = cleanedContent.replace(/\{[^}]*\}/g, '');
+    }
+    
     // Using a Blob with UTF-8 encoding is the correct way to handle all characters.
-    const blob = new Blob([content], { type: 'text/markdown; charset=utf-8' });
+    const blob = new Blob([cleanedContent], { type: 'text/markdown; charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

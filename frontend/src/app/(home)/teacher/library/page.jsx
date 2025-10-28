@@ -73,92 +73,9 @@ const generatePDF = async (content, filename) => {
 };
 
 const generateDOCX = async (content, filename) => {
-  const { Document, Packer, Paragraph, TextRun, HeadingLevel } = await import('docx');
-  
-  // Parse markdown content into structured elements
-  const lines = content.split('\n');
-  const docElements = [];
-  
-  for (const line of lines) {
-    if (!line.trim()) {
-      docElements.push(new Paragraph({ text: "" }));
-      continue;
-    }
-    
-    // Handle headers
-    if (line.startsWith('# ')) {
-      docElements.push(new Paragraph({
-        text: line.replace('# ', ''),
-        heading: HeadingLevel.HEADING_1
-      }));
-    } else if (line.startsWith('## ')) {
-      docElements.push(new Paragraph({
-        text: line.replace('## ', ''),
-        heading: HeadingLevel.HEADING_2
-      }));
-    } else if (line.startsWith('### ')) {
-      docElements.push(new Paragraph({
-        text: line.replace('### ', ''),
-        heading: HeadingLevel.HEADING_3
-      }));
-    } else if (line.startsWith('- ') || line.startsWith('* ')) {
-      // Handle bullet points
-      docElements.push(new Paragraph({
-        text: line.replace(/^[-*]\s/, ''),
-        bullet: { level: 0 }
-      }));
-    } else {
-      // Handle regular text with basic formatting
-      const textRuns = [];
-      let currentText = line;
-      
-      // Handle bold text
-      currentText = currentText.replace(/\*\*(.*?)\*\*/g, (match, text) => {
-        textRuns.push(new TextRun({ text, bold: true }));
-        return '\u0000'; // Placeholder
-      });
-      
-      // Handle italic text
-      currentText = currentText.replace(/\*(.*?)\*/g, (match, text) => {
-        textRuns.push(new TextRun({ text, italics: true }));
-        return '\u0000'; // Placeholder
-      });
-      
-      // Split by placeholders and add regular text
-      const parts = currentText.split('\u0000');
-      const finalRuns = [];
-      
-      for (let i = 0; i < parts.length; i++) {
-        if (parts[i]) {
-          finalRuns.push(new TextRun({ text: parts[i] }));
-        }
-        if (i < textRuns.length) {
-          finalRuns.push(textRuns[i]);
-        }
-      }
-      
-      docElements.push(new Paragraph({
-        children: finalRuns.length > 0 ? finalRuns : [new TextRun({ text: line })]
-      }));
-    }
-  }
-  
-  const doc = new Document({
-    sections: [{
-      properties: {},
-      children: docElements
-    }]
-  });
-  
-  const blob = await Packer.toBlob(doc);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${filename}.docx`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Use the main export function with equation support
+  const { generateDOCX: mainGenerateDOCX } = await import('@/lib/pdf-utils');
+  return await mainGenerateDOCX(content, filename, { includeHeader: true });
 };
 
 // Content type configurations with placeholder images

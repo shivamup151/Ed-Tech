@@ -143,6 +143,25 @@ export default function ContentPreview({
     // CLEANUP: Remove rogue "[object Object]" strings from previous render errors
     processedContent = processedContent.replace(/\[object Object\]/g, '');
 
+    // Handle LaTeX fractions for Arabic content
+    if (/[\u0600-\u06FF\u0750-\u077F]/.test(processedContent)) {
+      console.log('🧹 processContent - Processing Arabic LaTeX fractions...');
+      
+      // Convert \frac{numerator}{denominator} to numerator/denominator
+      processedContent = processedContent.replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, (match, numerator, denominator) => {
+        return `${numerator}/${denominator}`;
+      });
+      
+      // Remove other LaTeX commands
+      processedContent = processedContent.replace(/\\[a-zA-Z]+/g, '');
+      
+      // Remove curly braces
+      processedContent = processedContent.replace(/[{}]/g, '');
+      
+      // Remove dollar signs
+      processedContent = processedContent.replace(/\$\$?([^$]+)\$\$?/g, '$1');
+    }
+
     // Handle HTML tags for RTL/LTR support - but prefer pure Markdown
     if (containsHtml(processedContent)) {
       console.log('🧹 processContent - Removing HTML tags...');
@@ -438,11 +457,22 @@ export default function ContentPreview({
                 {contentData.content ? (
                   <div 
                     dir={/[\u0600-\u06FF\u0750-\u077F]/.test(contentData.content) ? 'rtl' : 'ltr'}
-                    style={/[\u0600-\u06FF\u0750-\u077F]/.test(contentData.content) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+                    style={/[\u0600-\u06FF\u0750-\u077F]/.test(contentData.content) ? { 
+                      direction: 'rtl', 
+                      textAlign: 'right', 
+                      unicodeBidi: 'embed',
+                      fontFamily: 'Arial, sans-serif',
+                      fontSize: '16px',
+                      lineHeight: '1.6'
+                    } : {
+                      fontFamily: 'Arial, sans-serif',
+                      fontSize: '16px',
+                      lineHeight: '1.6'
+                    }}
                   >
                     <ReactMarkdown
-                      remarkPlugins={[remarkGfm, remarkMath]}
-                      rehypePlugins={[rehypeKatex, rehypeRaw]}
+                      remarkPlugins={/[\u0600-\u06FF\u0750-\u077F]/.test(contentData.content) ? [remarkGfm] : [remarkGfm, remarkMath]}
+                      rehypePlugins={/[\u0600-\u06FF\u0750-\u077F]/.test(contentData.content) ? [rehypeRaw] : [rehypeKatex, rehypeRaw]}
                       components={MarkdownStyles}
                     >
                       {processContent(contentData.content)}
