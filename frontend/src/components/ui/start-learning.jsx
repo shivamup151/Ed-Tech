@@ -943,26 +943,64 @@ const AssessmentReview = ({ assessment, studentAnswers, score, correctAnswers, t
             {/* Show student's answer */}
             <div className="mb-3">
               <p className="text-sm font-medium text-foreground mb-1">Your Answer:</p>
-              <div className={`p-4 rounded-lg border-2 font-medium flex items-center gap-3 ${
+              <div className={`p-4 rounded-lg border-2 font-medium ${
                 isCorrect 
                   ? 'bg-green-50 dark:bg-green-900/30 border-green-500 text-green-900 dark:text-green-100' 
                   : 'bg-red-50 dark:bg-red-900/30 border-red-500 text-red-900 dark:text-red-100'
               }`}>
-                {isCorrect ? (
-                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-                ) : (
-                  <X className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-                )}
-                <span>{studentAnswer || <span className="text-gray-500 italic">No answer provided</span>}</span>
+                <div className="flex items-start gap-3">
+                  {isCorrect ? (
+                    <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-1" />
+                  ) : (
+                    <X className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-1" />
+                  )}
+                  <div className="flex-1">
+                    {studentAnswer ? (
+                      <div 
+                        dir={/[\u0600-\u06FF\u0750-\u077F]/.test(studentAnswer) ? 'rtl' : 'ltr'}
+                        style={/[\u0600-\u06FF\u0750-\u077F]/.test(studentAnswer) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+                      >
+                        <div className="prose prose-xs max-w-none dark:prose-invert">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm, remarkMath]}
+                            rehypePlugins={[rehypeKatex, rehypeRaw]}
+                            components={MarkdownStyles}
+                          >
+                            {studentAnswer}
+                          </ReactMarkdown>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-gray-500 italic">No answer provided</span>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Show correct answer */}
             <div className="mb-3">
               <p className="text-sm font-medium text-foreground mb-1">Correct Answer:</p>
-              <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 font-medium flex items-center gap-3">
-                <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                <span>{correctAnswer}</span>
+              <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 font-medium">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-1" />
+                  <div className="flex-1">
+                    <div 
+                      dir={/[\u0600-\u06FF\u0750-\u077F]/.test(correctAnswer) ? 'rtl' : 'ltr'}
+                      style={/[\u0600-\u06FF\u0750-\u077F]/.test(correctAnswer) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+                    >
+                      <div className="prose prose-xs max-w-none dark:prose-invert">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm, remarkMath]}
+                          rehypePlugins={[rehypeKatex, rehypeRaw]}
+                          components={MarkdownStyles}
+                        >
+                          {correctAnswer}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

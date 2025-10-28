@@ -380,11 +380,28 @@ export default function AssessmentPreview({
                   ? 'bg-green-50 border-green-500 text-green-900' 
                   : 'bg-red-50 border-red-500 text-red-900'
               }`}>
-                <div className="flex items-center gap-2">
+                <div className="flex items-start gap-2">
                   {isCorrect && (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <CheckCircle className="h-4 w-4 text-green-600 mt-1 flex-shrink-0" />
                   )}
-                  <span className="font-medium">Your Answer: {studentAnswer}</span>
+                  <div className="flex-1">
+                    <span className="font-medium">Your Answer:</span>
+                    <div 
+                      className="mt-1 break-words overflow-wrap-anywhere"
+                      dir={/[\u0600-\u06FF\u0750-\u077F]/.test(studentAnswer) ? 'rtl' : 'ltr'}
+                      style={/[\u0600-\u06FF\u0750-\u077F]/.test(studentAnswer) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+                    >
+                      <div className="prose prose-xs max-w-none dark:prose-invert" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm, remarkMath]}
+                          rehypePlugins={[rehypeKatex, rehypeRaw]}
+                          components={MarkdownStyles}
+                        >
+                          {studentAnswer}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -538,23 +555,25 @@ export default function AssessmentPreview({
 
         {/* Show correct answer in review mode or preview mode */}
         {(isReviewMode || isPreviewMode) && correctAnswer && (
-          <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
-            <p 
-              className="text-sm text-blue-700 dark:text-blue-400"
-              dir={/[\u0600-\u06FF\u0750-\u077F]/.test(correctAnswer) ? 'rtl' : 'ltr'}
-              style={/[\u0600-\u06FF\u0750-\u077F]/.test(correctAnswer) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
-            >
+          <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+            <div className="text-sm text-blue-700 dark:text-blue-400">
               <strong>Correct Answer:</strong>
-              <div className="prose prose-xs max-w-none dark:prose-invert mt-1">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeKatex, rehypeRaw]}
-                  components={MarkdownStyles}
-                >
-                  {correctAnswer}
-                </ReactMarkdown>
+              <div 
+                className="mt-2 break-words overflow-wrap-anywhere"
+                dir={/[\u0600-\u06FF\u0750-\u077F]/.test(correctAnswer) ? 'rtl' : 'ltr'}
+                style={/[\u0600-\u06FF\u0750-\u077F]/.test(correctAnswer) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
+              >
+                <div className="prose prose-sm max-w-none dark:prose-invert" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkMath]}
+                    rehypePlugins={[rehypeKatex, rehypeRaw]}
+                    components={MarkdownStyles}
+                  >
+                    {correctAnswer}
+                  </ReactMarkdown>
+                </div>
               </div>
-            </p>
+            </div>
           </div>
         )}
       </div>
