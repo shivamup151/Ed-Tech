@@ -390,6 +390,27 @@ export class RealtimeOpenAIService {
     - **Example CORRECT:** $x^2 + ٥x = ٠$ or $$\frac{{١}}{{٢}}$$ (Arabic)
     - **Example WRONG:** \(x^2 + 5x = 0\) or \[\frac{{1}}{{2}}\]
 
+**CRITICAL LaTeX/Mathematical Notation Requirement:**
+When including mathematical expressions, equations, or formulas, you MUST use standard LaTeX notation:
+- For inline math: Use single dollar signs: $expression$
+- For display/block math: Use double dollar signs: $$expression$$
+- Use standard LaTeX commands: \\frac{{}}{{}}, \\sqrt{{}}, \\int, \\sum, etc.
+- NEVER use backslash-parenthesis \\( \\) or backslash-bracket \\[ \\] notation
+- NEVER use standalone backslashes or brackets without dollar signs
+- NEVER use \\left or \\right commands
+- **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+- **EXAMPLES OF CORRECT FORMAT (English):**
+  - Inline: $x^2 + 5x + 6 = 0$
+  - Display: $$\\frac{{x^3}}{{3}} + x^2 + C$$
+- **EXAMPLES OF CORRECT FORMAT (Arabic):**
+  - Inline: $س^2 + ٥س + ٦ = ٠$
+  - Display: $$\\frac{{س^٣}}{{٣}} + س^٢ + C$$
+- **EXAMPLES OF INCORRECT FORMAT (DO NOT USE):**
+  -  \\( \\frac{{1}}{{2}} \\)
+  -  \\[ \\frac{{1}}{{2}} \\]
+  -  \\left( \\frac{{1}}{{2}} \\right)
+  -  $$\\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
+
 3.  **Math:** Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) for Arabic, English numerals (0123456789) for English.
 
 4.  **NEVER ASK:** "How can I help?" or "What would you like to study?" or "How can I assist you today?"
@@ -506,6 +527,27 @@ You MUST follow this interactive process for EACH step of the lesson.
     - **Example CORRECT:** $x^2 + ٥x = ٠$ or $$\frac{{١}}{{٢}}$$ (Arabic)
     - **Example WRONG:** \(x^2 + 5x = 0\) or \[\frac{{1}}{{2}}\]
 
+**CRITICAL LaTeX/Mathematical Notation Requirement:**
+When including mathematical expressions, equations, or formulas, you MUST use standard LaTeX notation:
+- For inline math: Use single dollar signs: $expression$
+- For display/block math: Use double dollar signs: $$expression$$
+- Use standard LaTeX commands: \\frac{{}}{{}}, \\sqrt{{}}, \\int, \\sum, etc.
+- NEVER use backslash-parenthesis \\( \\) or backslash-bracket \\[ \\] notation
+- NEVER use standalone backslashes or brackets without dollar signs
+- NEVER use \\left or \\right commands
+- **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+- **EXAMPLES OF CORRECT FORMAT (English):**
+  - Inline: $x^2 + 5x + 6 = 0$
+  - Display: $$\\frac{{x^3}}{{3}} + x^2 + C$$
+- **EXAMPLES OF CORRECT FORMAT (Arabic):**
+  - Inline: $س^2 + ٥س + ٦ = ٠$
+  - Display: $$\\frac{{س^٣}}{{٣}} + س^٢ + C$$
+- **EXAMPLES OF INCORRECT FORMAT (DO NOT USE):**
+  -  \\( \\frac{{1}}{{2}} \\)
+  -  \\[ \\frac{{1}}{{2}} \\]
+  -  \\left( \\frac{{1}}{{2}} \\right)
+  -  $$\\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
+
 5.  **Math:** Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) for Arabic, English numerals (0123456789) for English.
 
 6.  **NEVER ASK:** "How can I help?" or "What would you like to study?"
@@ -590,6 +632,27 @@ You MUST follow this interactive process for EACH step of the lesson.
    - **Example CORRECT:** $x^2 + 5x = 0$ or $$\frac{{1}}{{2}}$$ (English)
    - **Example CORRECT:** $x^2 + ٥x = ٠$ or $$\frac{{١}}{{٢}}$$ (Arabic)
    - **Example WRONG:** \(x^2 + 5x = 0\) or \[\frac{{1}}{{2}}\]
+
+**CRITICAL LaTeX/Mathematical Notation Requirement:**
+When including mathematical expressions, equations, or formulas, you MUST use standard LaTeX notation:
+- For inline math: Use single dollar signs: $expression$
+- For display/block math: Use double dollar signs: $$expression$$
+- Use standard LaTeX commands: \\frac{{}}{{}}, \\sqrt{{}}, \\int, \\sum, etc.
+- NEVER use backslash-parenthesis \\( \\) or backslash-bracket \\[ \\] notation
+- NEVER use standalone backslashes or brackets without dollar signs
+- NEVER use \\left or \\right commands
+- **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+- **EXAMPLES OF CORRECT FORMAT (English):**
+  - Inline: $x^2 + 5x + 6 = 0$
+  - Display: $$\\frac{{x^3}}{{3}} + x^2 + C$$
+- **EXAMPLES OF CORRECT FORMAT (Arabic):**
+  - Inline: $س^2 + ٥س + ٦ = ٠$
+  - Display: $$\\frac{{س^٣}}{{٣}} + س^٢ + C$$
+- **EXAMPLES OF INCORRECT FORMAT (DO NOT USE):**
+  -  \\( \\frac{{1}}{{2}} \\)
+  -  \\[ \\frac{{1}}{{2}} \\]
+  -  \\left( \\frac{{1}}{{2}} \\right)
+  -  $$\\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
 
 3. **NEVER ASK:** "How can I help?" or "What would you like to know?" or "How can I assist you today?"
 
@@ -702,6 +765,27 @@ Does this approach work for your classroom?`;
    - **Example CORRECT:** $x^2 + 5x = 0$ or $$\frac{{1}}{{2}}$$ (English)
    - **Example CORRECT:** $x^2 + ٥x = ٠$ or $$\frac{{١}}{{٢}}$$ (Arabic)
    - **Example WRONG:** \(x^2 + 5x = 0\) or \[\frac{{1}}{{2}}\]
+
+**CRITICAL LaTeX/Mathematical Notation Requirement:**
+When including mathematical expressions, equations, or formulas, you MUST use standard LaTeX notation:
+- For inline math: Use single dollar signs: $expression$
+- For display/block math: Use double dollar signs: $$expression$$
+- Use standard LaTeX commands: \\frac{{}}{{}}, \\sqrt{{}}, \\int, \\sum, etc.
+- NEVER use backslash-parenthesis \\( \\) or backslash-bracket \\[ \\] notation
+- NEVER use standalone backslashes or brackets without dollar signs
+- NEVER use \\left or \\right commands
+- **For Arabic content: Use Arabic numerals (٠١٢٣٤٥٦٧٨٩) in ALL LaTeX equations**
+- **EXAMPLES OF CORRECT FORMAT (English):**
+  - Inline: $x^2 + 5x + 6 = 0$
+  - Display: $$\\frac{{x^3}}{{3}} + x^2 + C$$
+- **EXAMPLES OF CORRECT FORMAT (Arabic):**
+  - Inline: $س^2 + ٥س + ٦ = ٠$
+  - Display: $$\\frac{{س^٣}}{{٣}} + س^٢ + C$$
+- **EXAMPLES OF INCORRECT FORMAT (DO NOT USE):**
+  -  \\( \\frac{{1}}{{2}} \\)
+  -  \\[ \\frac{{1}}{{2}} \\]
+  -  \\left( \\frac{{1}}{{2}} \\right)
+  -  $$\\frac{{1}}{{2}}$$ (in Arabic content - should use Arabic numerals)
 
 3. **NEVER ASK:** "How can I help?" or "What would you like to know?" or "How can I assist you today?"
 
