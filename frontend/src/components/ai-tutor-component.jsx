@@ -774,11 +774,16 @@ const AiTutor = () => {
                 style={/[\u0600-\u06FF\u0750-\u077F]/.test(content) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
             >
                 <ReactMarkdown 
-                    remarkPlugins={[remarkGfm, remarkMath]} 
-                    rehypePlugins={[rehypeKatex, rehypeRaw]} 
+                    remarkPlugins={/[\u0600-\u06FF\u0750-\u077F]/.test(content) ? [remarkGfm] : [remarkGfm, remarkMath]}
+                    rehypePlugins={/[\u0600-\u06FF\u0750-\u077F]/.test(content) ? [rehypeRaw] : [rehypeKatex, rehypeRaw]}
                     components={MarkdownStyles}
                 >
-                    {content}
+                    {/[\u0600-\u06FF\u0750-\u077F]/.test(content) ? 
+                        content.replace(/\$\$?([^$]+)\$\$?/g, '$1').replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, (match, numerator, denominator) => {
+                            return `${numerator}/${denominator}`;
+                        }).replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '') : 
+                        content
+                    }
                 </ReactMarkdown>
             </div>
         );
@@ -797,11 +802,16 @@ const AiTutor = () => {
                         style={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? { direction: 'rtl', textAlign: 'right', unicodeBidi: 'embed' } : {}}
                     >
                         <ReactMarkdown 
-                            remarkPlugins={[remarkGfm, remarkMath]} 
-                            rehypePlugins={[rehypeKatex, rehypeRaw]} 
+                            remarkPlugins={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? [remarkGfm] : [remarkGfm, remarkMath]}
+                            rehypePlugins={/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? [rehypeRaw] : [rehypeKatex, rehypeRaw]}
                             components={MarkdownStyles}
                         >
-                            {message.content}
+                            {/[\u0600-\u06FF\u0750-\u077F]/.test(message.content) ? 
+                                message.content.replace(/\$\$?([^$]+)\$\$?/g, '$1').replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, (match, numerator, denominator) => {
+                                    return `${numerator}/${denominator}`;
+                                }).replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '') : 
+                                message.content
+                            }
                         </ReactMarkdown>
                     </div>
                     {/* Copy button - only show for AI messages */}
@@ -921,34 +931,21 @@ const AiTutor = () => {
         });
     };
 
-    // Export as DOC (RTF format that can be opened in Word)
+    // Export as DOC (using main DOCX export function)
     const exportAsDOC = async (conversationText, conversationMessages) => {
-        // Create RTF content
-        let rtfContent = `{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Times New Roman;}}
-{\\colortbl;\\red0\\green0\\blue0;\\red0\\green0\\blue255;\\red0\\green128\\blue0;}
-\\f0\\fs24
-{\\b AI Tutor Conversation}\\par
-Exported on: ${new Date().toLocaleDateString()}\\par\\par`;
-
-        conversationMessages.forEach(msg => {
-            const timestamp = msg.timestamp.toLocaleString();
-            const role = msg.type === 'user' ? 'User' : 'AI Tutor';
-            rtfContent += `{\\b [${timestamp}] ${role}:}\\par`;
-            rtfContent += `${msg.content.replace(/\n/g, '\\par ')}\\par\\par`;
-        });
-
-        rtfContent += '}';
-
-        // Create blob and download
-        const blob = new Blob([rtfContent], { type: 'application/rtf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `ai-tutor-conversation-${new Date().toISOString().split('T')[0]}.rtf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        try {
+            // Use the main export function with equation support
+            const { generateDOCX } = await import('@/lib/pdf-utils');
+            await generateDOCX(conversationText, `ai-tutor-conversation-${new Date().toISOString().split('T')[0]}`, { 
+                title: 'AI Tutor Conversation',
+                subtitle: `Exported on: ${new Date().toLocaleDateString()}`,
+                includeHeader: true 
+            });
+        } catch (error) {
+            console.error('Failed to export as DOCX:', error);
+            // Fallback to text export
+            await exportAsText(conversationText);
+        }
     };
 
     // Export as text (fallback)
