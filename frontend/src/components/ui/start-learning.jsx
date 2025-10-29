@@ -663,7 +663,23 @@ const InteractiveAssessment = ({ assessment, onAnswerChange, studentAnswers, onS
                   <div key={optIndex} className="flex items-center space-x-2">
                     <RadioGroupItem value={option} id={`q${question.number}-opt${optIndex}`} />
                     <Label htmlFor={`q${question.number}-opt${optIndex}`} className="text-sm cursor-pointer text-foreground">
-                      {option}
+                      {option.replace(/\$\$?([^$]+)\$\$?/g, '$1').replace(/\\frac\{[^}]*\}\{[^}]*\}/g, (match) => {
+                        // Extract numerator and denominator from \frac{numerator}{denominator}
+                        const fracMatch = match.match(/\\frac\{([^}]*)\}\{([^}]*)\}/);
+                        if (fracMatch) {
+                          const numerator = fracMatch[1];
+                          const denominator = fracMatch[2];
+                          return `${numerator}/${denominator}`;
+                        }
+                        return match;
+                      }).replace(/\\sqrt\{[^}]*\}/g, (match) => {
+                        // Extract content from \sqrt{content}
+                        const sqrtMatch = match.match(/\\sqrt\{([^}]*)\}/);
+                        if (sqrtMatch) {
+                          return `√${sqrtMatch[1]}`;
+                        }
+                        return match;
+                      }).replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '')}
                     </Label>
                   </div>
                 ))}
@@ -1298,7 +1314,23 @@ const AssessmentReview = ({ assessment, studentAnswers, score, correctAnswers, t
                             lineHeight: '1.5'
                           }}
                         >
-                      {option}
+                          {option.replace(/\$\$?([^$]+)\$\$?/g, '$1').replace(/\\frac\{[^}]*\}\{[^}]*\}/g, (match) => {
+                            // Extract numerator and denominator from \frac{numerator}{denominator}
+                            const fracMatch = match.match(/\\frac\{([^}]*)\}\{([^}]*)\}/);
+                            if (fracMatch) {
+                              const numerator = fracMatch[1];
+                              const denominator = fracMatch[2];
+                              return `${numerator}/${denominator}`;
+                            }
+                            return match;
+                          }).replace(/\\sqrt\{[^}]*\}/g, (match) => {
+                            // Extract content from \sqrt{content}
+                            const sqrtMatch = match.match(/\\sqrt\{([^}]*)\}/);
+                            if (sqrtMatch) {
+                              return `√${sqrtMatch[1]}`;
+                            }
+                            return match;
+                          }).replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '')}
                         </div>
                       )}
                     </div>
