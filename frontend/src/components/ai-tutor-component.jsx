@@ -108,6 +108,9 @@ const AiTutor = () => {
     const [isListening, setIsListening] = useState(false);
     const [transcription, setTranscription] = useState('');
     
+    // NEW: Voice conversation auto-save timer
+    const [voiceSaveTimer, setVoiceSaveTimer] = useState(null);
+    
     // NEW: Video state instead of lip sync
     const [isSpeaking, setIsSpeaking] = useState(false);
     
@@ -347,8 +350,12 @@ const AiTutor = () => {
             if (realtimeService) {
                 realtimeService.disconnect();
             }
+            // NEW: Clear voice save timer on unmount
+            if (voiceSaveTimer) {
+                clearInterval(voiceSaveTimer);
+            }
         };
-    }, [realtimeService]);
+    }, [realtimeService, voiceSaveTimer]);
 
     // FIXED: Save conversation to history with proper state management
     const saveConversationToHistory = async (messagesToSave, sessionType = 'text') => {
@@ -969,9 +976,25 @@ Exported on: ${new Date().toLocaleDateString()}\\par\\par`;
         if (isVoiceActive) {
             // Stop voice session
             try {
+                // FIXED: Save final voice conversation state before disconnecting
+                if (messages.length > 1) { // Only save if there are actual messages
+                    try {
+                        await saveConversationToHistory(messages, 'voice');
+                        console.log('Voice conversation saved before disconnect');
+                    } catch (error) {
+                        console.error('Failed to save final voice conversation:', error);
+                    }
+                }
+                
                 if (realtimeService) {
                     realtimeService.disconnect();
                     setRealtimeService(null);
+                }
+                
+                // NEW: Clear auto-save timer
+                if (voiceSaveTimer) {
+                    clearInterval(voiceSaveTimer);
+                    setVoiceSaveTimer(null);
                 }
             } catch (error) {
                 console.error('Error disconnecting RealtimeOpenAI:', error);
@@ -1091,6 +1114,16 @@ Exported on: ${new Date().toLocaleDateString()}\\par\\par`;
                             isLive: false // Mark as complete
                         };
                     }
+                    
+                    // FIXED: Save voice conversation to database when AI response is complete
+                    setTimeout(async () => {
+                        try {
+                            await saveConversationToHistory(newMessages, 'voice');
+                        } catch (error) {
+                            console.error('Failed to save voice conversation:', error);
+                        }
+                    }, 100); // Small delay to ensure state is updated
+                    
                     return newMessages;
                 });
             };
@@ -1107,9 +1140,6 @@ Exported on: ${new Date().toLocaleDateString()}\\par\\par`;
                 // Add user message to chat
                 const userMessage = {
                     id: generateHydrationSafeId('user'),
-                    type: 'user',
-                    content: userTranscript,
-                    timestamp: getHydrationSafeTimestamp(isClient), 
                     type: 'user',
                     content: userTranscript,
                     timestamp: getHydrationSafeTimestamp(isClient),
@@ -1134,6 +1164,19 @@ Exported on: ${new Date().toLocaleDateString()}\\par\\par`;
                     console.warn('Data channel not ready, skipping test message');
                 }
             }, 1000);
+            
+            // NEW: Start auto-save timer for voice conversations (every 30 seconds)
+            const autoSaveTimer = setInterval(async () => {
+                if (messages.length > 1) {
+                    try {
+                        await saveConversationToHistory(messages, 'voice');
+                        console.log('Voice conversation auto-saved');
+                    } catch (error) {
+                        console.error('Failed to auto-save voice conversation:', error);
+                    }
+                }
+            }, 30000); // Save every 30 seconds
+            setVoiceSaveTimer(autoSaveTimer);
             
             toast.success('Voice session started! You can now speak with your AI tutor.');
             
