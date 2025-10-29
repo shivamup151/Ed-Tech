@@ -239,7 +239,10 @@ export async function getStudentFeedback(studentId) {
         { 
           name: "feedback_ttl_index",
           expireAfterSeconds: 0, // MongoDB will delete documents when expiresAt field is reached
-          partialFilterExpression: { "feedback.expiresAt": { $exists: true } }
+          partialFilterExpression: { 
+            "feedback": { $exists: true, $ne: [] },
+            "feedback.expiresAt": { $exists: true }
+          }
         }
       );
     } catch (indexError) {
@@ -260,10 +263,12 @@ export async function getStudentFeedback(studentId) {
       };
     }
     
-    // Filter out expired feedback
+    // Filter out feedback older than 3 days
     const now = new Date();
+    const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
     const activeFeedback = (student.feedback || []).filter(feedback => {
-      return !feedback.expiresAt || new Date(feedback.expiresAt) > now;
+      const feedbackDate = new Date(feedback.createdAt);
+      return feedbackDate > threeDaysAgo;
     });
     
     // Clean up expired feedback from database
