@@ -588,7 +588,70 @@ const InteractiveAssessment = ({ assessment, onAnswerChange, studentAnswers, onS
                  question.type === 'true_false' ? 'True/False' : 'Short Answer'}
               </Badge>
             </div>
-            <p className="text-foreground mb-4 font-medium">{question.text}</p>
+            <div 
+              className="text-foreground mb-4 font-medium"
+              dir={/[\u0600-\u06FF\u0750-\u077F]/.test(question.text) ? 'rtl' : 'ltr'}
+              style={/[\u0600-\u06FF\u0750-\u077F]/.test(question.text) ? { 
+                direction: 'rtl', 
+                textAlign: 'right', 
+                unicodeBidi: 'embed',
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '16px',
+                lineHeight: '1.6'
+              } : {
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '16px',
+                lineHeight: '1.6'
+              }}
+            >
+              {/[\u0600-\u06FF\u0750-\u077F]/.test(question.text) ? (
+                // For Arabic content, render as plain text to avoid LaTeX processing issues
+                <div 
+                  className="text-base font-medium"
+                  style={{ 
+                    wordBreak: 'break-word', 
+                    overflowWrap: 'anywhere',
+                    whiteSpace: 'pre-wrap',
+                    fontFamily: 'Arial, sans-serif',
+                    fontSize: '16px',
+                    lineHeight: '1.6'
+                  }}
+                >
+                  {question.text.replace(/\$\$?([^$]+)\$\$?/g, '$1').replace(/\\frac\{[^}]*\}\{[^}]*\}/g, (match) => {
+                    // Extract numerator and denominator from \frac{numerator}{denominator}
+                    const fracMatch = match.match(/\\frac\{([^}]*)\}\{([^}]*)\}/);
+                    if (fracMatch) {
+                      const numerator = fracMatch[1];
+                      const denominator = fracMatch[2];
+                      return `${numerator}/${denominator}`;
+                    }
+                    return match;
+                  }).replace(/\\sqrt\{[^}]*\}/g, (match) => {
+                    // Extract content from \sqrt{content}
+                    const sqrtMatch = match.match(/\\sqrt\{([^}]*)\}/);
+                    if (sqrtMatch) {
+                      return `√${sqrtMatch[1]}`;
+                    }
+                    return match;
+                  }).replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '')}
+                </div>
+              ) : (
+                // For non-Arabic content, use ReactMarkdown with LaTeX support
+                <div className="prose prose-base max-w-none dark:prose-invert" style={{ 
+                  wordBreak: 'break-word', 
+                  overflowWrap: 'anywhere',
+                  whiteSpace: 'pre-wrap'
+                }}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkMath]}
+                    rehypePlugins={[rehypeKatex, rehypeRaw]}
+                    components={MarkdownStyles}
+                  >
+                    {question.text}
+                  </ReactMarkdown>
+                </div>
+              )}
+            </div>
             
             {question.type === 'mcq' && question.options.length > 0 && (
               <RadioGroup
@@ -938,7 +1001,70 @@ const AssessmentReview = ({ assessment, studentAnswers, score, correctAnswers, t
                 {isCorrect ? '✓ Correct' : '✗ Incorrect'}
               </Badge>
             </div>
-            <p className="text-foreground mb-4 font-medium">{question.text}</p>
+            <div 
+              className="text-foreground mb-4 font-medium"
+              dir={/[\u0600-\u06FF\u0750-\u077F]/.test(question.text) ? 'rtl' : 'ltr'}
+              style={/[\u0600-\u06FF\u0750-\u077F]/.test(question.text) ? { 
+                direction: 'rtl', 
+                textAlign: 'right', 
+                unicodeBidi: 'embed',
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '16px',
+                lineHeight: '1.6'
+              } : {
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '16px',
+                lineHeight: '1.6'
+              }}
+            >
+              {/[\u0600-\u06FF\u0750-\u077F]/.test(question.text) ? (
+                // For Arabic content, render as plain text to avoid LaTeX processing issues
+                <div 
+                  className="text-base font-medium"
+                  style={{ 
+                    wordBreak: 'break-word', 
+                    overflowWrap: 'anywhere',
+                    whiteSpace: 'pre-wrap',
+                    fontFamily: 'Arial, sans-serif',
+                    fontSize: '16px',
+                    lineHeight: '1.6'
+                  }}
+                >
+                  {question.text.replace(/\$\$?([^$]+)\$\$?/g, '$1').replace(/\\frac\{[^}]*\}\{[^}]*\}/g, (match) => {
+                    // Extract numerator and denominator from \frac{numerator}{denominator}
+                    const fracMatch = match.match(/\\frac\{([^}]*)\}\{([^}]*)\}/);
+                    if (fracMatch) {
+                      const numerator = fracMatch[1];
+                      const denominator = fracMatch[2];
+                      return `${numerator}/${denominator}`;
+                    }
+                    return match;
+                  }).replace(/\\sqrt\{[^}]*\}/g, (match) => {
+                    // Extract content from \sqrt{content}
+                    const sqrtMatch = match.match(/\\sqrt\{([^}]*)\}/);
+                    if (sqrtMatch) {
+                      return `√${sqrtMatch[1]}`;
+                    }
+                    return match;
+                  }).replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '')}
+                </div>
+              ) : (
+                // For non-Arabic content, use ReactMarkdown with LaTeX support
+                <div className="prose prose-base max-w-none dark:prose-invert" style={{ 
+                  wordBreak: 'break-word', 
+                  overflowWrap: 'anywhere',
+                  whiteSpace: 'pre-wrap'
+                }}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkMath]}
+                    rehypePlugins={[rehypeKatex, rehypeRaw]}
+                    components={MarkdownStyles}
+                  >
+                    {question.text}
+                  </ReactMarkdown>
+                </div>
+              )}
+            </div>
             
             {/* Show student's answer */}
             <div className="mb-3">
@@ -993,6 +1119,13 @@ const AssessmentReview = ({ assessment, studentAnswers, score, correctAnswers, t
                                 const numerator = fracMatch[1];
                                 const denominator = fracMatch[2];
                                 return `${numerator}/${denominator}`;
+                              }
+                              return match;
+                            }).replace(/\\sqrt\{[^}]*\}/g, (match) => {
+                              // Extract content from \sqrt{content}
+                              const sqrtMatch = match.match(/\\sqrt\{([^}]*)\}/);
+                              if (sqrtMatch) {
+                                return `√${sqrtMatch[1]}`;
                               }
                               return match;
                             }).replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '')}
@@ -1065,6 +1198,13 @@ const AssessmentReview = ({ assessment, studentAnswers, score, correctAnswers, t
                           return `${numerator}/${denominator}`;
                         }
                         return match;
+                      }).replace(/\\sqrt\{[^}]*\}/g, (match) => {
+                        // Extract content from \sqrt{content}
+                        const sqrtMatch = match.match(/\\sqrt\{([^}]*)\}/);
+                        if (sqrtMatch) {
+                          return `√${sqrtMatch[1]}`;
+                        }
+                        return match;
                       }).replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '')}
                     </div>
                   ) : (
@@ -1134,6 +1274,13 @@ const AssessmentReview = ({ assessment, studentAnswers, score, correctAnswers, t
                               const numerator = fracMatch[1];
                               const denominator = fracMatch[2];
                               return `${numerator}/${denominator}`;
+                            }
+                            return match;
+                          }).replace(/\\sqrt\{[^}]*\}/g, (match) => {
+                            // Extract content from \sqrt{content}
+                            const sqrtMatch = match.match(/\\sqrt\{([^}]*)\}/);
+                            if (sqrtMatch) {
+                              return `√${sqrtMatch[1]}`;
                             }
                             return match;
                           }).replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '')}
