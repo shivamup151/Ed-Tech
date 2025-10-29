@@ -19,8 +19,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "School AI Platform",
-  description: "School AI Platform",
+  title: "Al Tajheez School AI Platform",
+  description: "Al Tajheez School AI Platform - Advanced Educational Technology Solutions",
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
 };
 
 export default function RootLayout({ children }) {
