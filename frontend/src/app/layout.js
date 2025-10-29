@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/ui/theme-provider";
 import Script from "next/script";
 import WeglotProvider from "@/components/WeglotProvider";
 import NoSSR from "@/components/NoSSR";
+import CleanupService from "@/components/cleanup-service";
 import "@/lib/hydration-error-handler"; // Suppress hydration errors globally
 
 const geistSans = Geist({
@@ -60,6 +61,11 @@ export default function RootLayout({ children }) {
                 />
                 <WeglotProvider />
               </div>
+            </NoSSR>
+            
+            {/* Background Cleanup Service */}
+            <NoSSR>
+              <CleanupService />
             </NoSSR>
           </div>
         </div>

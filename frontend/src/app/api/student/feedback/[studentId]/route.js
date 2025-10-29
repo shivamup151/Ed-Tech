@@ -22,7 +22,10 @@ export async function GET(request, { params }) {
         { 
           name: "feedback_ttl_index",
           expireAfterSeconds: 0, // MongoDB will delete documents when expiresAt field is reached
-          partialFilterExpression: { "feedback.expiresAt": { $exists: true } }
+          partialFilterExpression: { 
+            "feedback": { $exists: true, $ne: [] },
+            "feedback.expiresAt": { $exists: true }
+          }
         }
       );
     } catch (indexError) {
@@ -42,11 +45,13 @@ export async function GET(request, { params }) {
       );
     }
 
-    // Filter out expired feedback and create previews
+    // Filter out feedback older than 3 days and create previews
     const now = new Date();
+    const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
     const activeFeedback = (student.feedback || [])
       .filter(fb => {
-        return fb.isActive && (!fb.expiresAt || new Date(fb.expiresAt) > now);
+        const feedbackDate = new Date(fb.createdAt);
+        return fb.isActive && feedbackDate > threeDaysAgo;
       })
       .map(fb => {
         // Create preview (2-3 sentences)
