@@ -731,29 +731,113 @@ export async function getStudentLearningInsights(formData) {
  */
 export async function saveAiTutorChatSession(formData) {
   try {
-    const sessionData = JSON.parse(formData.get("sessionData") || "{}");
-
-    if (!sessionData.sessionId || !sessionData.userId) {
-      return {
-        success: false,
-        error: "Session ID and User ID are required"
-      };
+    const session = await getServerSession();
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
     }
 
-    // Revalidate the chat sessions page to show updated data
-    revalidatePath("/student/ai-tutor");
+    const conversationData = JSON.parse(formData.get('conversationData') || '{}');
+    console.log('Saving AI Tutor conversation data for user:', session.user.id);
+    
+    const db = await getDbConnection();
+
+    const conversation = {
+      studentId: new ObjectId(session.user.id),
+      sessionId: conversationData.sessionId,
+      title: conversationData.title || `AI Tutor Chat - ${new Date().toLocaleDateString()}`,
+      sessionType: conversationData.sessionType || 'text',
+      messages: conversationData.messages || [],
+      uploadedFiles: conversationData.uploadedFiles || [],
+      studentData: conversationData.studentData || {},
+      conversationStats: {
+        totalMessages: conversationData.messages?.length || 0,
+        userMessages: conversationData.messages?.filter(m => m.role === 'user').length || 0,
+        aiMessages: conversationData.messages?.filter(m => m.role === 'assistant').length || 0,
+        totalDuration: conversationData.totalDuration || 0,
+        topicsDiscussed: conversationData.topicsDiscussed || [],
+        difficultyLevel: conversationData.difficultyLevel || 'medium',
+        learningOutcomes: conversationData.learningOutcomes || []
+      },
+      metadata: {
+        createdAt: conversationData.metadata?.createdAt ? new Date(conversationData.metadata.createdAt) : new Date(),
+        updatedAt: new Date(),
+        lastMessageAt: new Date(),
+        isActive: conversationData.metadata?.isActive !== false,
+        tags: conversationData.metadata?.tags || []
+      }
+    };
+
+    // Check if conversation already exists
+    const existingConversation = await db.collection('student_conversations')
+      .findOne({ sessionId: conversationData.sessionId });
+
+    let result;
+    if (existingConversation) {
+      // Update existing conversation
+      result = await db.collection('student_conversations')
+        .updateOne(
+          { sessionId: conversationData.sessionId },
+          { $set: conversation }
+        );
+    } else {
+      // Create new conversation
+      result = await db.collection('student_conversations')
+        .insertOne(conversation);
+    }
+
+    revalidatePath('/student/ai-tutor');
+    revalidatePath('/student/history');
+    return {
+      success: true,
+      conversationId: (result.insertedId || existingConversation._id).toString() 
+    };
+  } catch (error) {
+    console.error('Error saving AI Tutor conversation:', error);
+    return { success: false, error: "Failed to save conversation" };
+  }
+}
+
+/**
+ * Get AI Tutor conversation history for student
+ * @returns {Promise<Object>} - Conversation history
+ */
+export async function getAiTutorConversationHistory() {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const db = await getDbConnection();
+    const studentId = new ObjectId(session.user.id);
+
+    const conversations = await db.collection('student_conversations')
+      .find({ studentId: studentId })
+      .sort({ 'metadata.updatedAt': -1 })
+      .toArray();
+
+    const serializedConversations = conversations.map(conv => ({
+      _id: conv._id.toString(),
+      sessionId: conv.sessionId,
+      title: conv.title,
+      sessionType: conv.sessionType,
+      conversationStats: conv.conversationStats,
+      metadata: {
+        createdAt: conv.metadata?.createdAt?.toISOString() || null,
+        updatedAt: conv.metadata?.updatedAt?.toISOString() || null,
+        lastMessageAt: conv.metadata?.lastMessageAt?.toISOString() || null,
+        isActive: conv.metadata?.isActive || false,
+        tags: conv.metadata?.tags || []
+      },
+      messageCount: conv.messages?.length || 0
+    }));
 
     return {
       success: true,
-      message: "AI Tutor chat session saved successfully",
-      sessionId: sessionData.sessionId
+      conversations: serializedConversations
     };
-
   } catch (error) {
-    console.error("Error saving AI Tutor chat session:", error);
-    return {
-      success: false,
-      error: error.message || "Failed to save chat session"
-    };
+    console.error('Error fetching AI Tutor conversation history:', error);
+    return { success: false, error: "Failed to fetch conversation history" };
   }
 }
